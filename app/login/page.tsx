@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
@@ -11,20 +11,20 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
-  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const result = await signIn("credentials", {
       email,
       password,
+      redirect: false,
     })
 
-    if (error) {
-      setError(error.message)
+    if (result?.error) {
+      setError(result.error)
       setLoading(false)
     } else {
       router.push("/app")
@@ -32,19 +32,9 @@ export default function LoginPage() {
     }
   }
 
-  const handleSocialLogin = async (provider: 'google' | 'kakao') => {
+  const handleGoogleLogin = async () => {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    }
+    await signIn("google", { callbackUrl: "/app" })
   }
 
   return (
@@ -149,22 +139,12 @@ export default function LoginPage() {
 
             <div className="space-y-3">
               <button
-                onClick={() => handleSocialLogin('google')}
+                onClick={handleGoogleLogin}
                 disabled={loading}
                 className="w-full bg-white border-2 border-gray-300 text-text-primary px-6 py-3 rounded-full font-bold hover:border-primary hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="flex items-center justify-center gap-2">
                   🔍 Google로 계속하기
-                </span>
-              </button>
-
-              <button
-                onClick={() => handleSocialLogin('kakao')}
-                disabled={loading}
-                className="w-full bg-[#FEE500] border-2 border-[#FEE500] text-[#191919] px-6 py-3 rounded-full font-bold hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  💬 Kakao로 계속하기
                 </span>
               </button>
             </div>
@@ -199,8 +179,8 @@ export default function LoginPage() {
 
       {/* Footer */}
       <footer className="border-t-2 border-light-border bg-light-bg-alt mt-40">
-        <div className="container mx-auto px-4 py-16">
-          <div className="grid md:grid-cols-3 gap-16 mb-16">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid md:grid-cols-3 gap-16 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-6">
                 <span className="text-3xl font-black">
@@ -226,19 +206,16 @@ export default function LoginPage() {
             <div>
               <h4 className="text-text-primary font-black mb-6 text-lg">정보</h4>
               <ul className="space-y-4 text-base">
-                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">소개</Link></li>
+                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">도파밈 소개</Link></li>
                 <li><Link href="/terms" className="text-text-secondary hover:text-primary transition font-semibold">이용약관</Link></li>
                 <li><Link href="/privacy" className="text-text-secondary hover:text-primary transition font-semibold">개인정보처리방침</Link></li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t-2 border-light-border pt-10 text-center">
-            <p className="text-text-secondary text-base mb-3 font-semibold">
+          <div className="border-t-2 border-light-border pt-8 text-center">
+            <p className="text-text-secondary text-base font-semibold">
               © 2025 도파밈. All rights reserved.
-            </p>
-            <p className="text-text-tertiary text-sm font-medium">
-              도파밈은 게임용 포인트를 사용하는 예측 플랫폼입니다.
             </p>
           </div>
         </div>
