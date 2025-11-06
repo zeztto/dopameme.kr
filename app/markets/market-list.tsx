@@ -202,7 +202,7 @@ export default function MarketList({ markets, isAdmin }: Props) {
                 <div className={`text-xs font-semibold ${
                   market.status === 'resolved' ? 'text-gray-500' : 'text-text-tertiary'
                 }`}>
-                  총 {market.totalAmount.toLocaleString()} DPM
+                  총 {market.totalAmount.toLocaleString()} DPMM
                 </div>
                 <div className={`text-xs font-semibold ${
                   market.status === 'resolved' ? 'text-gray-500' : 'text-text-tertiary'

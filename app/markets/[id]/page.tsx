@@ -52,7 +52,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
       .where(eq(users.id, session.user.id))
       .limit(1)
 
-    userBalance = user?.dpmBalance || 0
+    userBalance = user?.dpmmBalance || 0
 
     // 사용자가 이 마켓에 참여한 예측 조회
     userPredictions = await db
@@ -131,7 +131,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
               <div>
                 <span className="text-text-tertiary font-semibold">총 베팅액</span>
                 <div className="text-primary font-black text-2xl mt-1">
-                  {totalAmount.toLocaleString()} DPM
+                  {totalAmount.toLocaleString()} DPMM
                 </div>
               </div>
               <div>
@@ -162,14 +162,14 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
                       {pred.optionTitle}
                     </span>
                     <span className="text-primary font-black">
-                      {pred.amount.toLocaleString()} DPM
+                      {pred.amount.toLocaleString()} DPMM
                     </span>
                   </div>
                 ))}
                 <div className="pt-3 border-t-2 border-primary/20 flex justify-between items-center">
                   <span className="text-text-primary font-black">총 베팅액</span>
                   <span className="text-primary font-black text-xl">
-                    {totalUserBet.toLocaleString()} DPM
+                    {totalUserBet.toLocaleString()} DPMM
                   </span>
                 </div>
               </div>
@@ -200,7 +200,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
                       <div>
                         <span className={`font-semibold ${market.status === 'resolved' ? 'text-gray-500' : 'text-text-tertiary'}`}>베팅액</span>
                         <div className={`font-black ${optionsWithPercentage[0].isWinner ? 'text-success' : market.status === 'resolved' ? 'text-gray-600' : 'text-text-primary'}`}>
-                          {optionsWithPercentage[0].totalAmount.toLocaleString()} DPM
+                          {optionsWithPercentage[0].totalAmount.toLocaleString()} DPMM
                         </div>
                       </div>
                     </div>
@@ -222,7 +222,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
                       <div>
                         <span className={`font-semibold ${market.status === 'resolved' ? 'text-gray-500' : 'text-text-tertiary'}`}>베팅액</span>
                         <div className={`font-black ${optionsWithPercentage[1].isWinner ? 'text-success' : market.status === 'resolved' ? 'text-gray-600' : 'text-text-primary'}`}>
-                          {optionsWithPercentage[1].totalAmount.toLocaleString()} DPM
+                          {optionsWithPercentage[1].totalAmount.toLocaleString()} DPMM
                         </div>
                       </div>
                     </div>
@@ -345,7 +345,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
                         <div className={`font-black ${
                           option.isWinner ? 'text-success' : market.status === 'resolved' ? 'text-gray-600' : 'text-text-primary'
                         }`}>
-                          {option.totalAmount.toLocaleString()} DPM
+                          {option.totalAmount.toLocaleString()} DPMM
                         </div>
                       </div>
                     </div>
@@ -412,7 +412,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
                 로그인하고 예측에 참여하세요
               </h3>
               <p className="text-text-secondary font-medium mb-6">
-                회원가입하면 10,000 DPM 웰컴 보너스를 드립니다!
+                회원가입하면 10,000 DPMM 웰컴 보너스를 드립니다!
               </p>
               <div className="flex gap-4 justify-center">
                 <Link

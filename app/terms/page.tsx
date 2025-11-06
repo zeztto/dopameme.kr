@@ -39,7 +39,7 @@ export default async function TermsPage() {
                   "회원"이란 본 약관에 동의하고 회사와 서비스 이용계약을 체결한 자를 의미합니다.
                 </li>
                 <li>
-                  "도파밈(DPM)"이란 서비스 내에서 사용되는 게임용 포인트로, 현금으로 환전되거나
+                  "도파밈(DPMM)"이란 서비스 내에서 사용되는 게임용 포인트로, 현금으로 환전되거나
                   외부로 전송될 수 없는 가상의 재화를 의미합니다.
                 </li>
                 <li>
@@ -102,7 +102,7 @@ export default async function TermsPage() {
             <div className="text-gray-700 leading-relaxed space-y-3">
               <ol className="list-decimal list-inside space-y-2 ml-4">
                 <li>
-                  도파밈(DPM)은 서비스 내에서만 사용 가능한 게임용 포인트이며,
+                  도파밈(DPMM)은 서비스 내에서만 사용 가능한 게임용 포인트이며,
                   <span className="text-secondary font-semibold"> 현금으로 환전하거나 외부로 전송할 수 없습니다.</span>
                 </li>
                 <li>

@@ -43,10 +43,10 @@ export async function placePrediction(formData: {
       .where(eq(users.id, session.user.id))
       .limit(1)
 
-    if (!user || user.dpmBalance < formData.amount) {
+    if (!user || user.dpmmBalance < formData.amount) {
       return {
         success: false,
-        error: 'DPM 잔액이 부족합니다',
+        error: 'DPMM 잔액이 부족합니다',
       }
     }
 
@@ -102,7 +102,7 @@ export async function placePrediction(formData: {
       await tx
         .update(users)
         .set({
-          dpmBalance: sql`${users.dpmBalance} - ${formData.amount}`,
+          dpmmBalance: sql`${users.dpmmBalance} - ${formData.amount}`,
         })
         .where(eq(users.id, session.user.id as string))
 

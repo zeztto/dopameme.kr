@@ -42,7 +42,7 @@ async function generateSQL() {
     }
     usedNicknames.add(nickname)
 
-    console.log(`INSERT INTO users (id, name, email, password, role, dpm_balance, created_at)`)
+    console.log(`INSERT INTO users (id, name, email, password, role, dpmm_balance, created_at)`)
     console.log(`VALUES ('${id}', '${nickname}', '${email}', '${hashedPassword}', 'test', 10000, NOW());`)
     console.log('')
   }

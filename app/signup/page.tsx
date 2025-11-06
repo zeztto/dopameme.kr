@@ -73,7 +73,7 @@ export default function SignupPage() {
             회원가입 완료!
           </h1>
           <p className="text-text-secondary text-lg font-medium mb-8">
-            <span className="text-primary font-black">10,000 DPM</span> 웰컴 보너스가 지급되었습니다!
+            <span className="text-primary font-black">10,000 DPMM</span> 웰컴 보너스가 지급되었습니다!
             <br />
             잠시 후 로그인 페이지로 이동합니다...
           </p>
@@ -123,7 +123,7 @@ export default function SignupPage() {
             시작하세요!
           </h1>
           <p className="text-text-secondary text-lg font-medium">
-            무료로 가입하고 <span className="text-primary font-black">10,000 DPM</span> 받기
+            무료로 가입하고 <span className="text-primary font-black">10,000 DPMM</span> 받기
           </p>
         </div>
 

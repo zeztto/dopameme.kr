@@ -24,11 +24,11 @@ export default async function Header({ showBackToMarkets = false, userBalance }:
   if (session?.user?.id && balance === undefined) {
     try {
       const [dbUser] = await db
-        .select({ dpmBalance: users.dpmBalance })
+        .select({ dpmmBalance: users.dpmmBalance })
         .from(users)
         .where(eq(users.id, session.user.id))
         .limit(1);
-      balance = dbUser?.dpmBalance || 0;
+      balance = dbUser?.dpmmBalance || 0;
     } catch (error) {
       console.error('Header DB error:', error);
       balance = 0;
@@ -57,7 +57,7 @@ export default async function Header({ showBackToMarkets = false, userBalance }:
                 {balance !== undefined && (
                   <div className="bg-primary/10 px-4 py-2 rounded-full">
                     <span className="text-primary font-black">
-                      {balance.toLocaleString()} DPM
+                      {balance.toLocaleString()} DPMM
                     </span>
                   </div>
                 )}

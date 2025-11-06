@@ -93,7 +93,7 @@ export default async function MarketsPage() {
             다양한 이슈에 예측하세요
           </h1>
           <p className="text-text-secondary text-xl font-medium">
-            실시간으로 업데이트되는 예측 시장에서 DPM을 획득하세요
+            실시간으로 업데이트되는 예측 시장에서 DPMM을 획득하세요
           </p>
         </section>
 

@@ -43,7 +43,7 @@ export async function registerUser(formData: {
         email: formData.email,
         name: formData.name,
         password: hashedPassword, // 해시화된 비밀번호 저장
-        dpmBalance: 10000, // 웰컴 보너스
+        dpmmBalance: 10000, // 웰컴 보너스
         emailVerified: null, // 이메일 인증 없이 바로 사용 가능
       })
       .returning()

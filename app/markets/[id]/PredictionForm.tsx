@@ -28,13 +28,13 @@ export default function PredictionForm({
     setSuccess('')
 
     if (amount < 100) {
-      setError('최소 베팅 금액은 100 DPM입니다')
+      setError('최소 베팅 금액은 100 DPMM입니다')
       setLoading(false)
       return
     }
 
     if (amount > userBalance) {
-      setError('DPM 잔액이 부족합니다')
+      setError('DPMM 잔액이 부족합니다')
       setLoading(false)
       return
     }
@@ -64,7 +64,7 @@ export default function PredictionForm({
       setAmount(newAmount)
       setError('')
     } else {
-      setError(`최대 ${Math.min(userBalance, 10000).toLocaleString()} DPM까지 가능합니다`)
+      setError(`최대 ${Math.min(userBalance, 10000).toLocaleString()} DPMM까지 가능합니다`)
     }
   }
 
@@ -91,7 +91,7 @@ export default function PredictionForm({
           <div className="text-3xl font-black text-primary mb-1">
             {amount.toLocaleString()}
           </div>
-          <div className="text-text-tertiary text-xs font-semibold">DPM</div>
+          <div className="text-text-tertiary text-xs font-semibold">DPMM</div>
         </div>
 
         {/* Quick Amount Buttons - Add on Click */}
@@ -127,12 +127,12 @@ export default function PredictionForm({
             disabled={loading || amount < 100 || amount > userBalance}
             className="flex-[2] bg-primary text-white px-4 py-3 rounded-full font-black hover:bg-primary-dark hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? '처리 중...' : `${amount.toLocaleString()} DPM 베팅`}
+            {loading ? '처리 중...' : `${amount.toLocaleString()} DPMM 베팅`}
           </button>
         </div>
 
         <div className="text-text-tertiary text-xs font-semibold text-center">
-          보유: {userBalance.toLocaleString()} DPM
+          보유: {userBalance.toLocaleString()} DPMM
         </div>
       </form>
     </div>

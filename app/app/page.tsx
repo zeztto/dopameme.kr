@@ -13,18 +13,18 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  // 사용자 정보 조회 (DPM 밸런스 포함)
+  // 사용자 정보 조회 (DPMM 밸런스 포함)
   const [dbUser] = await db
     .select()
     .from(users)
     .where(eq(users.id, session.user.id as string))
     .limit(1)
 
-  const dpmBalance = dbUser?.dpmBalance || 0
+  const dpmmBalance = dbUser?.dpmmBalance || 0
 
   return (
     <div className="min-h-screen bg-white">
-      <Header userBalance={dpmBalance} />
+      <Header userBalance={dpmmBalance} />
 
       <main className="container mx-auto px-4 py-20">
         {/* Welcome Section */}
@@ -45,9 +45,9 @@ export default async function DashboardPage() {
         {/* Stats Cards */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           <div className="bg-gradient-to-br from-primary/10 via-white to-white border-3 border-primary rounded-3xl p-10 text-center hover:shadow-2xl transition">
-            <div className="text-5xl font-black text-primary mb-4">{dpmBalance.toLocaleString()}</div>
-            <div className="text-text-primary font-bold text-lg">보유 DPM</div>
-            <div className="text-text-tertiary text-sm mt-2">{dpmBalance === 10000 ? '웰컴 보너스' : '현재 잔액'}</div>
+            <div className="text-5xl font-black text-primary mb-4">{dpmmBalance.toLocaleString()}</div>
+            <div className="text-text-primary font-bold text-lg">보유 DPMMM</div>
+            <div className="text-text-tertiary text-sm mt-2">{dpmmBalance === 10000 ? '웰컴 보너스' : '현재 잔액'}</div>
           </div>
 
           <div className="bg-gradient-to-br from-success/10 via-white to-white border-3 border-success rounded-3xl p-10 text-center hover:shadow-2xl transition">
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
             무엇을 하시겠습니까?
           </h2>
           <p className="text-text-secondary text-lg font-medium mb-12">
-            다양한 이슈에 대한 예측으로 DPM을 획득하세요
+            다양한 이슈에 대한 예측으로 DPMM을 획득하세요
           </p>
 
           <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
