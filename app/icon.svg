@@ -1,0 +1,7 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="8" fill="#DC2626"/>
+  <!-- D letter stylized -->
+  <path d="M10 8C10 7.44772 10.4477 7 11 7H14.5C18.6421 7 22 10.3579 22 14.5C22 18.6421 18.6421 22 14.5 22H11C10.4477 22 10 21.5523 10 21V8Z" fill="#FFFFFF"/>
+  <circle cx="15.5" cy="14.5" r="3.5" fill="#2563EB"/>
+  <circle cx="17" cy="13" r="1" fill="#FFFFFF"/>
+</svg>
