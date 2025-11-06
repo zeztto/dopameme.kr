@@ -6,40 +6,52 @@ import { eq, desc } from "drizzle-orm";
 import Header from "@/components/Header";
 
 export default async function LandingPage() {
-  const session = await auth();
+  let session = null;
+  let marketsWithOptions: any[] = [];
 
-  // 진행중인 예측 마켓 3개 가져오기
-  const activeMarkets = await db
-    .select({
-      id: markets.id,
-      title: markets.title,
-      description: markets.description,
-      category: markets.category,
-      endsAt: markets.endsAt,
-      createdAt: markets.createdAt,
-    })
-    .from(markets)
-    .where(eq(markets.status, 'active'))
-    .orderBy(desc(markets.createdAt))
-    .limit(3);
+  try {
+    session = await auth();
+  } catch (error) {
+    console.error('Auth error:', error);
+  }
 
-  // 각 마켓의 옵션과 총 참여자 수 가져오기
-  const marketsWithOptions = await Promise.all(
-    activeMarkets.map(async (market) => {
-      const options = await db
-        .select()
-        .from(marketOptions)
-        .where(eq(marketOptions.marketId, market.id));
+  try {
+    // 진행중인 예측 마켓 3개 가져오기
+    const activeMarkets = await db
+      .select({
+        id: markets.id,
+        title: markets.title,
+        description: markets.description,
+        category: markets.category,
+        endsAt: markets.endsAt,
+        createdAt: markets.createdAt,
+      })
+      .from(markets)
+      .where(eq(markets.status, 'active'))
+      .orderBy(desc(markets.createdAt))
+      .limit(3);
 
-      const totalParticipants = options.reduce((sum, opt) => sum + opt.totalPredictions, 0);
+    // 각 마켓의 옵션과 총 참여자 수 가져오기
+    marketsWithOptions = await Promise.all(
+      activeMarkets.map(async (market) => {
+        const options = await db
+          .select()
+          .from(marketOptions)
+          .where(eq(marketOptions.marketId, market.id));
 
-      return {
-        ...market,
-        options,
-        totalParticipants,
-      };
-    })
-  );
+        const totalParticipants = options.reduce((sum, opt) => sum + opt.totalPredictions, 0);
+
+        return {
+          ...market,
+          options,
+          totalParticipants,
+        };
+      })
+    );
+  } catch (error) {
+    console.error('Database error:', error);
+    // DB 에러가 발생해도 페이지는 로드되도록 빈 배열 유지
+  }
   return (
     <div className="min-h-screen bg-white">
       <Header />
