@@ -787,7 +787,7 @@ export default async function AboutPage() {
               도파밈과 함께 시작하세요
             </h2>
             <p className="text-2xl text-white mb-10 font-bold">
-              지금 가입하고 <span className="bg-white text-secondary px-4 py-1 rounded-lg font-black">10,000 DPM</span> 웰컴 보너스를 받아보세요
+              지금 가입하고 <span className="bg-white text-secondary px-4 py-1 rounded-lg font-black">10,000 DPMM</span> 웰컴 보너스를 받아보세요
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <Link

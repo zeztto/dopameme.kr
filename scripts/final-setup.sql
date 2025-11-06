@@ -1,6 +1,6 @@
 -- 최종 설정 SQL
 -- 1. 수수료 소각 계정 생성
--- 2. 테스트 계정 잔고 100만 DPM 설정
+-- 2. 테스트 계정 잔고 100만 DPMM 설정
 -- 3. 기존 모호한 예측 삭제
 -- 4. 명확한 기준의 새 예측 생성 (날씨, 이슈, 국제 포함)
 
@@ -18,7 +18,7 @@ DECLARE
   v_market_id TEXT;
 BEGIN
   -- 1. 수수료 소각용 계정 생성
-  INSERT INTO users (id, name, email, password, role, dpm_balance, created_at)
+  INSERT INTO users (id, name, email, password, role, dpmm_balance, created_at)
   VALUES (
     'fee-burn-account',
     'FEE_BURN',
@@ -31,9 +31,9 @@ BEGIN
 
   RAISE NOTICE '수수료 소각 계정 생성 완료';
 
-  -- 2. 모든 테스트 계정의 DPM 잔고를 100만으로 설정
+  -- 2. 모든 테스트 계정의 DPMM 잔고를 100만으로 설정
   UPDATE users
-  SET dpm_balance = 1000000
+  SET dpmm_balance = 1000000
   WHERE role = 'test';
 
   RAISE NOTICE '테스트 계정 잔고 업데이트 완료';

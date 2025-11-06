@@ -18,7 +18,7 @@ export const users = pgTable('users', {
   image: text('image'),
   password: text('password'), // 크레덴셜 로그인용 (해시화된 비밀번호)
   role: text('role').default('user'), // user, admin, test
-  dpmBalance: integer('dpm_balance').default(10000), // 웰컴 보너스
+  dpmmBalance: integer('dpmm_balance').default(10000), // 웰컴 보너스
   createdAt: timestamp('created_at').defaultNow(),
 })
 
@@ -98,7 +98,7 @@ export const marketOptions = pgTable('market_options', {
     .references(() => markets.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   totalPredictions: integer('total_predictions').default(0).notNull(),
-  totalAmount: integer('total_amount').default(0).notNull(), // 이 선택지에 걸린 총 DPM
+  totalAmount: integer('total_amount').default(0).notNull(), // 이 선택지에 걸린 총 DPMM
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -116,8 +116,8 @@ export const predictions = pgTable('predictions', {
   optionId: text('option_id')
     .notNull()
     .references(() => marketOptions.id, { onDelete: 'cascade' }),
-  amount: integer('amount').notNull(), // 베팅한 DPM 양
+  amount: integer('amount').notNull(), // 베팅한 DPMM 양
   createdAt: timestamp('created_at').defaultNow().notNull(),
   resolved: integer('resolved').default(0).notNull(), // 0: 대기, 1: 승리, -1: 패배
-  payout: integer('payout').default(0).notNull(), // 지급받은 DPM
+  payout: integer('payout').default(0).notNull(), // 지급받은 DPMM
 })

@@ -129,7 +129,7 @@ export async function resolveMarket(formData: {
         await tx
           .update(users)
           .set({
-            dpmBalance: sql`${users.dpmBalance} + ${netPayout}`,
+            dpmmBalance: sql`${users.dpmmBalance} + ${netPayout}`,
           })
           .where(eq(users.id, prediction.userId))
       }
@@ -139,7 +139,7 @@ export async function resolveMarket(formData: {
         await tx
           .update(users)
           .set({
-            dpmBalance: sql`${users.dpmBalance} + ${totalFees}`,
+            dpmmBalance: sql`${users.dpmmBalance} + ${totalFees}`,
           })
           .where(eq(users.id, 'fee-burn-account'))
       }

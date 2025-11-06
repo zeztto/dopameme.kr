@@ -25,7 +25,7 @@ CREATE TABLE "users" (
 	"email" text,
 	"emailVerified" timestamp,
 	"image" text,
-	"dpm_balance" integer DEFAULT 10000,
+	"dpmm_balance" integer DEFAULT 10000,
 	"created_at" timestamp DEFAULT now(),
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );

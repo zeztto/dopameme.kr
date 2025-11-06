@@ -1,6 +1,6 @@
 -- 테스트 계정 100개가 과거 이벤트 예측 100개에 무작위로 참여하는 스크립트
 -- 각 계정은 최소 50개 이상의 예측에 참여
--- 베팅 금액: 500~2000 DPM
+-- 베팅 금액: 500~2000 DPMM
 
 DO $$
 DECLARE
@@ -20,7 +20,7 @@ BEGIN
 
   -- 모든 테스트 계정 가져오기
   FOR v_test_user IN
-    SELECT id, name, dpm_balance
+    SELECT id, name, dpmm_balance
     FROM users
     WHERE role = 'test'
     ORDER BY id
@@ -52,16 +52,16 @@ BEGIN
       LIMIT 1;
 
       IF v_option.id IS NOT NULL THEN
-        -- 베팅 금액 랜덤 생성 (500~2000 DPM)
+        -- 베팅 금액 랜덤 생성 (500~2000 DPMM)
         v_bet_amount := 500 + floor(random() * 1501)::INTEGER;
 
         -- 사용자 잔고 확인
-        SELECT dpm_balance INTO v_test_user.dpm_balance
+        SELECT dpmm_balance INTO v_test_user.dpmm_balance
         FROM users
         WHERE id = v_test_user.id;
 
         -- 잔고가 충분한 경우만 예측 생성
-        IF v_test_user.dpm_balance >= v_bet_amount THEN
+        IF v_test_user.dpmm_balance >= v_bet_amount THEN
           -- 예측 ID 생성
           v_prediction_id := gen_random_uuid();
 
@@ -86,7 +86,7 @@ BEGIN
 
           -- 사용자 잔고 차감
           UPDATE users
-          SET dpm_balance = dpm_balance - v_bet_amount
+          SET dpmm_balance = dpmm_balance - v_bet_amount
           WHERE id = v_test_user.id;
 
           -- 마켓 옵션 통계 업데이트

@@ -9,7 +9,7 @@ DECLARE
   v_market_id TEXT;
 BEGIN
   -- 1. 수수료 소각용 계정 생성
-  INSERT INTO users (id, name, email, password, role, dpm_balance, created_at)
+  INSERT INTO users (id, name, email, password, role, dpmm_balance, created_at)
   VALUES (
     'fee-burn-account',
     'FEE_BURN',
@@ -22,9 +22,9 @@ BEGIN
 
   RAISE NOTICE '수수료 소각 계정 생성 완료';
 
-  -- 2. 모든 테스트 계정의 DPM 잔고를 100만으로 설정
+  -- 2. 모든 테스트 계정의 DPMM 잔고를 100만으로 설정
   UPDATE users
-  SET dpm_balance = 1000000
+  SET dpmm_balance = 1000000
   WHERE role = 'test';
 
   RAISE NOTICE '테스트 계정 잔고 업데이트 완료';

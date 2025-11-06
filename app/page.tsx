@@ -86,7 +86,7 @@ export default async function LandingPage() {
           <p className="text-xl md:text-2xl text-text-secondary max-w-2xl mx-auto leading-relaxed font-medium">
             정치, 경제, 스포츠, 연예까지!
             <br />
-            당신의 예측으로 <span className="text-primary font-black">도파밈(DPM)</span>을 획득하세요
+            당신의 예측으로 <span className="text-primary font-black">도파밈(DPMM)</span>을 획득하세요
           </p>
 
           <div className="flex justify-center items-center pt-8">
@@ -133,7 +133,7 @@ export default async function LandingPage() {
 
           <div className="bg-gradient-to-br from-primary/10 via-white to-white border-3 border-primary rounded-3xl p-10 hover:border-primary hover:shadow-2xl hover:shadow-primary/30 transition-all group">
             <div className="text-6xl mb-6 text-center">💰</div>
-            <h3 className="text-2xl font-black mb-4 text-text-primary text-center">도파밈(DPM) 획득</h3>
+            <h3 className="text-2xl font-black mb-4 text-text-primary text-center">도파밈(DPMM) 획득</h3>
             <p className="text-text-secondary text-base leading-relaxed font-medium">
               출석, 예측 참여, 성공 보상 등 다양한 방법으로 포인트를 얻으세요
             </p>
@@ -247,7 +247,7 @@ export default async function LandingPage() {
                     {/* Footer */}
                     <div className="flex justify-between items-center pt-4 border-t-2 border-gray-100">
                       <div className="text-xs font-semibold text-text-tertiary">
-                        총 {market.options.reduce((sum, opt) => sum + opt.totalAmount, 0).toLocaleString()} DPM
+                        총 {market.options.reduce((sum, opt) => sum + opt.totalAmount, 0).toLocaleString()} DPMM
                       </div>
                       <div className="text-xs font-semibold text-text-tertiary">
                         {new Date(market.endsAt).toLocaleDateString('ko-KR', {
@@ -403,7 +403,7 @@ export default async function LandingPage() {
               </div>
               <h4 className="font-black text-xl mb-4 text-text-primary">예측 참여</h4>
               <p className="text-base text-text-secondary leading-relaxed font-medium">
-                DPM으로 Yes/No 지분 구매하기
+                DPMM으로 Yes/No 지분 구매하기
               </p>
             </div>
 
@@ -413,7 +413,7 @@ export default async function LandingPage() {
               </div>
               <h4 className="font-black text-xl mb-4 text-text-primary">보상 획득</h4>
               <p className="text-base text-text-secondary leading-relaxed font-medium">
-                예측 성공 시 DPM 보상 받기
+                예측 성공 시 DPMM 보상 받기
               </p>
             </div>
           </div>
@@ -425,7 +425,7 @@ export default async function LandingPage() {
             지금 바로 시작하세요!
           </h2>
           <p className="text-2xl text-white mb-12 font-bold">
-            무료 가입하고 <span className="font-black bg-white text-secondary px-4 py-1 rounded-lg">10,000 DPM</span> 웰컴 보너스를 받아가세요
+            무료 가입하고 <span className="font-black bg-white text-secondary px-4 py-1 rounded-lg">10,000 DPMM</span> 웰컴 보너스를 받아가세요
           </p>
           <div className="flex justify-center items-center">
             <Link

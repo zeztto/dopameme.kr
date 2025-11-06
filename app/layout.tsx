@@ -6,8 +6,8 @@ export const metadata: Metadata = {
     default: "도파밈 - 세상의 모든 이슈 예측하고 즐겨라",
     template: "%s | 도파밈"
   },
-  description: "정치, 경제, 스포츠, 연예 등 실세계 이벤트를 예측하고 도파밈(DPM) 포인트를 획득하세요. AI 기반 예측 알고리즘과 게이미피케이션으로 즐기는 대한민국 No.1 소셜 예측 게임 플랫폼입니다.",
-  keywords: ["예측 게임", "예측 시장", "도파밈", "DPM", "베팅 게임", "예측 플랫폼", "이슈 예측", "소셜 게임", "포인트 게임", "정치 예측", "경제 예측", "스포츠 예측"],
+  description: "정치, 경제, 스포츠, 연예 등 실세계 이벤트를 예측하고 도파밈(DPMM) 포인트를 획득하세요. AI 기반 예측 알고리즘과 게이미피케이션으로 즐기는 대한민국 No.1 소셜 예측 게임 플랫폼입니다.",
+  keywords: ["예측 게임", "예측 시장", "도파밈", "DPMM", "베팅 게임", "예측 플랫폼", "이슈 예측", "소셜 게임", "포인트 게임", "정치 예측", "경제 예측", "스포츠 예측"],
   authors: [{ name: "도파밈" }],
   creator: "도파밈",
   publisher: "도파밈",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     url: 'https://dopameme.kr',
     siteName: '도파밈',
     title: '도파밈 - 세상의 모든 이슈 예측하고 즐겨라',
-    description: '정치, 경제, 스포츠, 연예 등 실세계 이벤트를 예측하고 도파밈(DPM) 포인트를 획득하세요. 게임처럼 즐기는 대한민국 No.1 예측 플랫폼입니다.',
+    description: '정치, 경제, 스포츠, 연예 등 실세계 이벤트를 예측하고 도파밈(DPMM) 포인트를 획득하세요. 게임처럼 즐기는 대한민국 No.1 예측 플랫폼입니다.',
     images: [
       {
         url: '/opengraph-image',
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '도파밈 - 세상의 모든 이슈 예측하고 즐겨라',
-    description: '정치, 경제, 스포츠, 연예 등 실세계 이벤트를 예측하고 도파밈(DPM) 포인트를 획득하세요.',
+    description: '정치, 경제, 스포츠, 연예 등 실세계 이벤트를 예측하고 도파밈(DPMM) 포인트를 획득하세요.',
     images: ['/opengraph-image'],
   },
   robots: {
