@@ -11,17 +11,28 @@ type HeaderProps = {
 }
 
 export default async function Header({ showBackToMarkets = false, userBalance }: HeaderProps) {
-  const session = await auth()
+  let session = null;
+
+  try {
+    session = await auth();
+  } catch (error) {
+    console.error('Header auth error:', error);
+  }
 
   // 사용자 잔액 조회 (prop으로 전달되지 않은 경우)
-  let balance = userBalance
+  let balance = userBalance;
   if (session?.user?.id && balance === undefined) {
-    const [dbUser] = await db
-      .select({ dpmBalance: users.dpmBalance })
-      .from(users)
-      .where(eq(users.id, session.user.id))
-      .limit(1)
-    balance = dbUser?.dpmBalance || 0
+    try {
+      const [dbUser] = await db
+        .select({ dpmBalance: users.dpmBalance })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1);
+      balance = dbUser?.dpmBalance || 0;
+    } catch (error) {
+      console.error('Header DB error:', error);
+      balance = 0;
+    }
   }
 
   return (

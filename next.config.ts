@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  serverExternalPackages: ['bcryptjs', 'postgres'],
+  experimental: {
+    serverComponentsExternalPackages: ['bcryptjs', 'postgres'],
+  },
 };
 
 export default nextConfig;
