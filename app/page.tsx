@@ -5,6 +5,9 @@ import { markets, marketOptions } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Header from "@/components/Header";
 
+// auth() 사용으로 인한 동적 렌더링 명시
+export const dynamic = 'force-dynamic';
+
 export default async function LandingPage() {
   let session = null;
   let marketsWithOptions: any[] = [];
