@@ -1,36 +1,48 @@
 import Link from "next/link";
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
+import { markets, marketOptions } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
+import Header from "@/components/Header";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth();
+
+  // 진행중인 예측 마켓 3개 가져오기
+  const activeMarkets = await db
+    .select({
+      id: markets.id,
+      title: markets.title,
+      description: markets.description,
+      category: markets.category,
+      endsAt: markets.endsAt,
+      createdAt: markets.createdAt,
+    })
+    .from(markets)
+    .where(eq(markets.status, 'active'))
+    .orderBy(desc(markets.createdAt))
+    .limit(3);
+
+  // 각 마켓의 옵션과 총 참여자 수 가져오기
+  const marketsWithOptions = await Promise.all(
+    activeMarkets.map(async (market) => {
+      const options = await db
+        .select()
+        .from(marketOptions)
+        .where(eq(marketOptions.marketId, market.id));
+
+      const totalParticipants = options.reduce((sum, opt) => sum + opt.totalPredictions, 0);
+
+      return {
+        ...market,
+        options,
+        totalParticipants,
+      };
+    })
+  );
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b-2 border-primary/20 bg-white sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <nav className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold">
-                <span className="text-primary">도</span>
-                <span className="text-secondary">파</span>
-                <span className="text-primary">밈</span>
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/app"
-                className="text-text-secondary hover:text-primary transition text-sm font-semibold"
-              >
-                대시보드
-              </Link>
-              <Link
-                href="/login"
-                className="bg-primary text-white px-6 py-2.5 rounded-full font-bold hover:bg-primary-dark hover:shadow-xl transition text-sm"
-              >
-                로그인
-              </Link>
-            </div>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <main className="container mx-auto px-4 py-20 relative overflow-hidden">
@@ -62,18 +74,12 @@ export default function LandingPage() {
             당신의 예측으로 <span className="text-primary font-black">도파밈(DPM)</span>을 획득하세요
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-5 justify-center items-center pt-8">
+          <div className="flex justify-center items-center pt-8">
             <Link
               href="/app"
-              className="bg-secondary text-white px-14 py-5 rounded-full font-black hover:bg-secondary-dark hover:shadow-2xl hover:scale-105 transition-all text-lg w-full sm:w-auto"
+              className="bg-secondary text-white px-14 py-5 rounded-full font-black hover:bg-secondary-dark hover:shadow-2xl hover:scale-105 transition-all text-lg"
             >
               지금 시작하기 →
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="bg-white text-primary border-3 border-primary px-14 py-5 rounded-full font-black hover:bg-primary hover:text-white transition-all text-lg w-full sm:w-auto shadow-md"
-            >
-              더 알아보기
             </Link>
           </div>
 
@@ -103,29 +109,155 @@ export default function LandingPage() {
         {/* Features */}
         <div className="grid md:grid-cols-3 gap-8 mt-40 relative z-10">
           <div className="bg-gradient-to-br from-success/10 via-white to-white border-3 border-success rounded-3xl p-10 hover:border-success hover:shadow-2xl hover:shadow-success/30 transition-all group">
-            <div className="text-6xl mb-6">🎮</div>
-            <h3 className="text-2xl font-black mb-4 text-text-primary">게임처럼 즐기는 예측</h3>
+            <div className="text-6xl mb-6 text-center">🎮</div>
+            <h3 className="text-2xl font-black mb-4 text-text-primary text-center">게임처럼 즐기는 예측</h3>
             <p className="text-text-secondary text-base leading-relaxed font-medium">
-              게임용 포인트 시스템으로 부담 없이 즐기는 예측 게임
+              게임용 포인트 시스템으로 부담 없이 예측 게임을 즐기세요
             </p>
           </div>
 
           <div className="bg-gradient-to-br from-primary/10 via-white to-white border-3 border-primary rounded-3xl p-10 hover:border-primary hover:shadow-2xl hover:shadow-primary/30 transition-all group">
-            <div className="text-6xl mb-6">💰</div>
-            <h3 className="text-2xl font-black mb-4 text-text-primary">도파밈(DPM) 획득</h3>
+            <div className="text-6xl mb-6 text-center">💰</div>
+            <h3 className="text-2xl font-black mb-4 text-text-primary text-center">도파밈(DPM) 획득</h3>
             <p className="text-text-secondary text-base leading-relaxed font-medium">
-              출석, 예측 참여, 성공 보상 등 다양한 방법으로 포인트 획득
+              출석, 예측 참여, 성공 보상 등 다양한 방법으로 포인트를 얻으세요
             </p>
           </div>
 
           <div className="bg-gradient-to-br from-secondary/10 via-white to-white border-3 border-secondary rounded-3xl p-10 hover:border-secondary hover:shadow-2xl hover:shadow-secondary/30 transition-all group">
-            <div className="text-6xl mb-6">🏆</div>
-            <h3 className="text-2xl font-black mb-4 text-text-primary">랭킹과 명예</h3>
+            <div className="text-6xl mb-6 text-center">🏆</div>
+            <h3 className="text-2xl font-black mb-4 text-text-primary text-center">명예와 보상</h3>
             <p className="text-text-secondary text-base leading-relaxed font-medium">
-              예측 실력을 증명하고 리더보드 상위권에 도전하세요
+              예측 실력을 증명하고 순위표 상위권에 도전해 특별한 보상을 획득하세요
             </p>
           </div>
         </div>
+
+        {/* Active Markets */}
+        {marketsWithOptions.length > 0 && (
+          <div className="mt-40 relative z-10">
+            <div className="text-center mb-12">
+              <h2 className="text-5xl md:text-6xl font-black text-text-primary mb-4">
+                지금 진행중인 예측
+              </h2>
+              <p className="text-xl text-text-secondary font-semibold">
+                실시간으로 참여하고 있는 핫한 예측들
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+              {marketsWithOptions.map((market) => {
+                // 총 베팅액 기준으로 percentage 계산
+                const totalAmount = market.options.reduce((sum, opt) => sum + opt.totalAmount, 0);
+                const optionsWithPercentage = market.options.map((option) => ({
+                  ...option,
+                  percentage: totalAmount > 0
+                    ? Math.round((option.totalAmount / totalAmount) * 100)
+                    : Math.round(100 / market.options.length), // 참여자 없으면 균등 분배
+                }));
+
+                return (
+                  <Link
+                    key={market.id}
+                    href={`/markets/${market.id}`}
+                    className="bg-white border-3 border-primary/20 rounded-3xl p-6 hover:border-primary hover:shadow-2xl transition-all group"
+                  >
+                    {/* Category Badge */}
+                    <div className="mb-4 flex items-center gap-2">
+                      <span className="inline-block bg-secondary/10 text-secondary px-4 py-1.5 rounded-full text-xs font-black">
+                        {market.category}
+                      </span>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-xl font-black text-text-primary mb-6 line-clamp-2 group-hover:text-primary transition">
+                      {market.title}
+                    </h3>
+
+                    {/* Options with Percentages */}
+                    {optionsWithPercentage.length === 2 ? (
+                      // 2개 선택지: 좌우 비율 막대
+                      <div className="mb-6">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-sm flex items-center gap-1 text-text-primary">
+                            {optionsWithPercentage[0].title}
+                          </span>
+                          <span className="font-bold text-sm flex items-center gap-1 text-text-primary">
+                            {optionsWithPercentage[1].title}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-black text-xl text-primary">
+                            {optionsWithPercentage[0].percentage}%
+                          </span>
+                          <span className="font-black text-xl text-primary">
+                            {optionsWithPercentage[1].percentage}%
+                          </span>
+                        </div>
+                        <div className="h-12 bg-gray-100 rounded-full overflow-hidden flex">
+                          <div
+                            className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all"
+                            style={{ width: `${optionsWithPercentage[0].percentage}%` }}
+                          />
+                          <div
+                            className="h-full bg-gradient-to-l from-secondary to-secondary/70 transition-all"
+                            style={{ width: `${optionsWithPercentage[1].percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      // 3개 이상 선택지: 개별 막대
+                      <div className="space-y-3 mb-6">
+                        {optionsWithPercentage.map((option) => (
+                          <div key={option.id} className="relative">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="font-bold text-sm flex items-center gap-2 text-text-primary">
+                                {option.title}
+                              </span>
+                              <span className="font-black text-lg text-primary">
+                                {option.percentage}%
+                              </span>
+                            </div>
+                            <div className="h-6 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all"
+                                style={{ width: `${option.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="flex justify-between items-center pt-4 border-t-2 border-gray-100">
+                      <div className="text-xs font-semibold text-text-tertiary">
+                        총 {market.options.reduce((sum, opt) => sum + opt.totalAmount, 0).toLocaleString()} DPM
+                      </div>
+                      <div className="text-xs font-semibold text-text-tertiary">
+                        {new Date(market.endsAt).toLocaleDateString('ko-KR', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })} 마감
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="text-center mt-12">
+              <Link
+                href="/markets"
+                className="inline-block bg-white text-primary border-3 border-primary px-12 py-4 rounded-full font-black hover:bg-primary hover:text-white transition-all text-lg"
+              >
+                모든 예측 보기 →
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* News & Press Section */}
         <div className="mt-40 relative z-10">
@@ -280,18 +412,12 @@ export default function LandingPage() {
           <p className="text-2xl text-white mb-12 font-bold">
             무료 가입하고 <span className="font-black bg-white text-secondary px-4 py-1 rounded-lg">10,000 DPM</span> 웰컴 보너스를 받아가세요
           </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+          <div className="flex justify-center items-center">
             <Link
               href="/app"
               className="inline-block bg-white text-secondary px-16 py-6 rounded-full font-black hover:shadow-2xl hover:scale-105 transition-all text-xl"
             >
               무료로 시작하기 →
-            </Link>
-            <Link
-              href="/login"
-              className="inline-block bg-white/10 backdrop-blur border-3 border-white text-white px-16 py-6 rounded-full font-black hover:bg-white hover:text-secondary transition-all text-xl"
-            >
-              로그인하기
             </Link>
           </div>
         </div>
@@ -299,8 +425,8 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t-2 border-light-border bg-light-bg-alt mt-40">
-        <div className="container mx-auto px-4 py-16">
-          <div className="grid md:grid-cols-3 gap-16 mb-16">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid md:grid-cols-3 gap-16 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-6">
                 <span className="text-3xl font-black">
@@ -317,28 +443,25 @@ export default function LandingPage() {
             <div>
               <h4 className="text-text-primary font-black mb-6 text-lg">서비스</h4>
               <ul className="space-y-4 text-base">
-                <li><Link href="/app" className="text-text-secondary hover:text-primary transition font-semibold">대시보드</Link></li>
-                <li><Link href="/markets" className="text-text-secondary hover:text-primary transition font-semibold">마켓</Link></li>
-                <li><Link href="/leaderboard" className="text-text-secondary hover:text-primary transition font-semibold">리더보드</Link></li>
+                <li><Link href="/app" className="text-text-secondary hover:text-primary transition font-semibold">내 활동</Link></li>
+                <li><Link href="/markets" className="text-text-secondary hover:text-primary transition font-semibold">예측 시장</Link></li>
+                <li><Link href="/leaderboard" className="text-text-secondary hover:text-primary transition font-semibold">순위표</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-text-primary font-black mb-6 text-lg">정보</h4>
               <ul className="space-y-4 text-base">
-                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">소개</Link></li>
+                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">도파밈 소개</Link></li>
                 <li><Link href="/terms" className="text-text-secondary hover:text-primary transition font-semibold">이용약관</Link></li>
                 <li><Link href="/privacy" className="text-text-secondary hover:text-primary transition font-semibold">개인정보처리방침</Link></li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t-2 border-light-border pt-10 text-center">
-            <p className="text-text-secondary text-base mb-3 font-semibold">
+          <div className="border-t-2 border-light-border pt-8 text-center">
+            <p className="text-text-secondary text-base font-semibold">
               © 2025 도파밈. All rights reserved.
-            </p>
-            <p className="text-text-tertiary text-sm font-medium">
-              도파밈은 게임용 포인트를 사용하는 예측 플랫폼입니다.
             </p>
           </div>
         </div>

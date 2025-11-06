@@ -1,9 +1,11 @@
 'use client'
 
 import Link from "next/link"
-import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
+import { registerUser } from "./actions"
+import { generateRandomNickname } from "@/lib/nickname-generator"
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
@@ -14,7 +16,11 @@ export default function SignupPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+
+  // 컴포넌트 마운트시 무작위 닉네임 생성
+  useEffect(() => {
+    setNickname(generateRandomNickname())
+  }, [])
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,40 +41,27 @@ export default function SignupPage() {
       return
     }
 
-    const { error } = await supabase.auth.signUp({
+    // 서버 액션으로 회원가입
+    const result = await registerUser({
       email,
       password,
-      options: {
-        data: {
-          nickname: nickname,
-        },
-      },
+      name: nickname,
     })
 
-    if (error) {
-      setError(error.message)
+    if (!result.success) {
+      setError(result.error || "회원가입 중 오류가 발생했습니다")
       setLoading(false)
     } else {
       setSuccess(true)
       setTimeout(() => {
         router.push("/login")
-      }, 3000)
+      }, 2000)
     }
   }
 
-  const handleSocialLogin = async (provider: 'google' | 'kakao') => {
+  const handleGoogleLogin = async () => {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    }
+    await signIn("google", { callbackUrl: "/app" })
   }
 
   if (success) {
@@ -80,7 +73,7 @@ export default function SignupPage() {
             회원가입 완료!
           </h1>
           <p className="text-text-secondary text-lg font-medium mb-8">
-            이메일을 확인하여 계정을 활성화해주세요.
+            <span className="text-primary font-black">10,000 DPM</span> 웰컴 보너스가 지급되었습니다!
             <br />
             잠시 후 로그인 페이지로 이동합니다...
           </p>
@@ -153,9 +146,13 @@ export default function SignupPage() {
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 required
+                maxLength={12}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-secondary focus:outline-none text-text-primary font-medium"
-                placeholder="도파밈유저"
+                placeholder="무작위 닉네임이 자동으로 입력됩니다"
               />
+              <p className="text-text-tertiary text-xs mt-1 font-medium">
+                무작위 닉네임이 자동 생성되었습니다. 원하시면 수정 가능합니다 (최대 12자)
+              </p>
             </div>
 
             <div>
@@ -229,22 +226,12 @@ export default function SignupPage() {
 
             <div className="space-y-3">
               <button
-                onClick={() => handleSocialLogin('google')}
+                onClick={handleGoogleLogin}
                 disabled={loading}
                 className="w-full bg-white border-2 border-gray-300 text-text-primary px-6 py-3 rounded-full font-bold hover:border-secondary hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="flex items-center justify-center gap-2">
                   🔍 Google로 시작하기
-                </span>
-              </button>
-
-              <button
-                onClick={() => handleSocialLogin('kakao')}
-                disabled={loading}
-                className="w-full bg-[#FEE500] border-2 border-[#FEE500] text-[#191919] px-6 py-3 rounded-full font-bold hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  💬 Kakao로 시작하기
                 </span>
               </button>
             </div>
@@ -279,8 +266,8 @@ export default function SignupPage() {
 
       {/* Footer */}
       <footer className="border-t-2 border-light-border bg-light-bg-alt mt-40">
-        <div className="container mx-auto px-4 py-16">
-          <div className="grid md:grid-cols-3 gap-16 mb-16">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid md:grid-cols-3 gap-16 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-6">
                 <span className="text-3xl font-black">
@@ -306,19 +293,16 @@ export default function SignupPage() {
             <div>
               <h4 className="text-text-primary font-black mb-6 text-lg">정보</h4>
               <ul className="space-y-4 text-base">
-                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">소개</Link></li>
+                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">도파밈 소개</Link></li>
                 <li><Link href="/terms" className="text-text-secondary hover:text-primary transition font-semibold">이용약관</Link></li>
                 <li><Link href="/privacy" className="text-text-secondary hover:text-primary transition font-semibold">개인정보처리방침</Link></li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t-2 border-light-border pt-10 text-center">
-            <p className="text-text-secondary text-base mb-3 font-semibold">
+          <div className="border-t-2 border-light-border pt-8 text-center">
+            <p className="text-text-secondary text-base font-semibold">
               © 2025 도파밈. All rights reserved.
-            </p>
-            <p className="text-text-tertiary text-sm font-medium">
-              도파밈은 게임용 포인트를 사용하는 예측 플랫폼입니다.
             </p>
           </div>
         </div>

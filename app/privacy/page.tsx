@@ -1,36 +1,12 @@
 import Link from "next/link";
+import { auth } from "@/auth";
+import Header from "@/components/Header";
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const session = await auth();
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b-2 border-primary/20 bg-white sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <nav className="flex justify-between items-center">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl font-bold">
-                <span className="text-primary">도</span>
-                <span className="text-secondary">파</span>
-                <span className="text-primary">밈</span>
-              </span>
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/app"
-                className="text-text-secondary hover:text-primary transition text-sm font-semibold"
-              >
-                대시보드
-              </Link>
-              <Link
-                href="/login"
-                className="bg-primary text-white px-6 py-2.5 rounded-full font-bold hover:bg-primary-dark hover:shadow-xl transition text-sm"
-              >
-                로그인
-              </Link>
-            </div>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       <main className="container mx-auto px-4 py-20 max-w-4xl">
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
@@ -325,8 +301,8 @@ export default function PrivacyPage() {
 
       {/* Footer */}
       <footer className="border-t-2 border-light-border bg-light-bg-alt mt-40">
-        <div className="container mx-auto px-4 py-16">
-          <div className="grid md:grid-cols-3 gap-16 mb-16">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid md:grid-cols-3 gap-16 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-6">
                 <span className="text-3xl font-black">
@@ -343,28 +319,25 @@ export default function PrivacyPage() {
             <div>
               <h4 className="text-text-primary font-black mb-6 text-lg">서비스</h4>
               <ul className="space-y-4 text-base">
-                <li><Link href="/app" className="text-text-secondary hover:text-primary transition font-semibold">대시보드</Link></li>
-                <li><Link href="/markets" className="text-text-secondary hover:text-primary transition font-semibold">마켓</Link></li>
-                <li><Link href="/leaderboard" className="text-text-secondary hover:text-primary transition font-semibold">리더보드</Link></li>
+                <li><Link href="/app" className="text-text-secondary hover:text-primary transition font-semibold">내 활동</Link></li>
+                <li><Link href="/markets" className="text-text-secondary hover:text-primary transition font-semibold">예측 시장</Link></li>
+                <li><Link href="/leaderboard" className="text-text-secondary hover:text-primary transition font-semibold">순위표</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-text-primary font-black mb-6 text-lg">정보</h4>
               <ul className="space-y-4 text-base">
-                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">소개</Link></li>
+                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">도파밈 소개</Link></li>
                 <li><Link href="/terms" className="text-text-secondary hover:text-primary transition font-semibold">이용약관</Link></li>
                 <li><Link href="/privacy" className="text-text-secondary hover:text-primary transition font-semibold">개인정보처리방침</Link></li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t-2 border-light-border pt-10 text-center">
-            <p className="text-text-secondary text-base mb-3 font-semibold">
+          <div className="border-t-2 border-light-border pt-8 text-center">
+            <p className="text-text-secondary text-base font-semibold">
               © 2025 도파밈. All rights reserved.
-            </p>
-            <p className="text-text-tertiary text-sm font-medium">
-              도파밈은 게임용 포인트를 사용하는 예측 플랫폼입니다.
             </p>
           </div>
         </div>
