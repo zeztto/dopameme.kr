@@ -78,6 +78,9 @@ gh workflow run "Deploy service with Docker Compose" \
 
 - Real env files are not committed and are not synced by the deploy workflow.
 - `migrate` runs `prisma migrate deploy` before seed/app startup.
+- Migration `0008_add_dpmm_ledger_transactions` backfills opening ledger rows
+  for existing non-zero DPMM balances, then all new balance mutations are
+  recorded by application transactions.
 - `seed` creates the initial admin user, fee-burn account, and mock markets idempotently.
 - Keep `AUTH_URL` and `NEXTAUTH_URL` set to `https://dopameme.kr` in production.
 - Solana values are public token/RPC settings only. Do not place mint authority,

@@ -17,6 +17,20 @@ const navItems = [
   { href: '/admin/withdrawals', label: '출금 관리', description: 'DPMM 출금 승인' },
 ]
 
+function isNavItemActive(pathname: string, href: string) {
+  if (href === '/admin') return pathname === href
+
+  if (href === '/admin/markets') {
+    return (
+      pathname === href ||
+      (pathname.startsWith(`${href}/`) &&
+        !pathname.startsWith('/admin/markets/create'))
+    )
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
 export default function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
   const pathname = usePathname()
 
@@ -37,10 +51,7 @@ export default function AdminSidebar({ userName, userEmail }: AdminSidebarProps)
 
       <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-5">
         {navItems.map((item) => {
-          const active =
-            item.href === '/admin'
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(`${item.href}/`)
+          const active = isNavItemActive(pathname, item.href)
 
           return (
             <Link

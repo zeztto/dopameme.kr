@@ -73,6 +73,7 @@ docs/
 ### Database
 - **PostgreSQL** (Docker Compose)
 - **Prisma ORM**: 타입 안전 ORM 및 마이그레이션
+- **DPMM Ledger**: 모든 장부 잔액 증감을 append-only transaction으로 기록
 
 ### Web3
 - **Solana devnet**: DPMM Token-2022 mint 연결
@@ -160,6 +161,7 @@ dopameme.kr/
 - 실시간 확률 업데이트
 - DPMM 포인트로 예측 참여
 - 1% 플랫폼 수수료
+- 예측 참여, 정산, 출금, 관리자 조정을 DPMM ledger로 추적
 
 ### 사용자 시스템
 - 이메일/비밀번호 또는 Google OAuth 로그인
@@ -174,7 +176,7 @@ dopameme.kr/
 - 결과 확정 및 보상 분배
 - 마켓 가리기/삭제
 - 회원 권한/상태 관리
-- 회원 DPMM 잔액 조정 및 조정 이력 기록
+- 회원 DPMM 잔액 조정 및 ledger 이력 기록
 - DPMM 출금 요청 승인/거절 및 transaction signature 기록
 
 ---

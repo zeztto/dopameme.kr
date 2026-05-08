@@ -7,6 +7,8 @@ import { checkRateLimit, getRequestIp } from '@/lib/rate-limit'
 import { isValidEmail, normalizeEmail } from '@/lib/validation'
 import bcrypt from 'bcryptjs'
 
+const oauthWelcomeBonus = 10000
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' },
@@ -141,6 +143,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string
       }
       return session
+    },
+  },
+  events: {
+    async createUser({ user }) {
+      if (!user.id) return
+
+      await prisma.dpmmLedgerTransaction.create({
+        data: {
+          userId: user.id,
+          type: 'welcome_bonus',
+          delta: oauthWelcomeBonus,
+          balanceAfter: oauthWelcomeBonus,
+          reason: 'OAuth 회원가입 웰컴 보너스',
+          sourceType: 'oauth_signup',
+          sourceId: user.id,
+        },
+      })
     },
   },
 })

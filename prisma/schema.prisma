@@ -26,6 +26,8 @@ model User {
   predictions             Prediction[]
   balanceAdjustments      UserBalanceAdjustment[]   @relation("UserBalanceAdjustments")
   adminBalanceAdjustments UserBalanceAdjustment[]   @relation("AdminBalanceAdjustments")
+  ledgerTransactions      DpmmLedgerTransaction[]   @relation("UserDpmmLedgerTransactions")
+  actorLedgerTransactions DpmmLedgerTransaction[]   @relation("ActorDpmmLedgerTransactions")
   solanaWallet            SolanaWallet?
   solanaWalletNonces      SolanaWalletNonce[]
   withdrawalRequests      SolanaWithdrawalRequest[] @relation("UserWithdrawalRequests")
@@ -115,6 +117,29 @@ model UserBalanceAdjustment {
   @@index([adminId])
   @@index([createdAt])
   @@map("user_balance_adjustments")
+}
+
+model DpmmLedgerTransaction {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  actorId      String?  @map("actor_id")
+  type         String
+  delta        Int
+  balanceAfter Int      @map("balance_after")
+  reason       String?  @db.Text
+  sourceType   String?  @map("source_type")
+  sourceId     String?  @map("source_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user  User  @relation("UserDpmmLedgerTransactions", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("ActorDpmmLedgerTransactions", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([actorId])
+  @@index([type])
+  @@index([sourceType, sourceId])
+  @@index([createdAt])
+  @@map("dpmm_ledger_transactions")
 }
 
 model Account {

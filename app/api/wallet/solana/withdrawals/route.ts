@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { auth } from '@/auth'
+import { createDpmmLedgerEntry } from '@/lib/dpmm/ledger'
 import { prisma } from '@/lib/db'
 import { checkRateLimit, getRequestIp } from '@/lib/rate-limit'
 import { getSolanaTokenConfig } from '@/lib/solana/config'
@@ -210,7 +211,16 @@ export async function POST(request: NextRequest) {
         throw new Error('INSUFFICIENT_BALANCE')
       }
 
-      return tx.solanaWithdrawalRequest.create({
+      const updatedUser = await tx.user.findUnique({
+        where: { id: user.id },
+        select: { dpmmBalance: true },
+      })
+
+      if (!updatedUser) {
+        throw new Error('USER_INACTIVE')
+      }
+
+      const withdrawal = await tx.solanaWithdrawalRequest.create({
         data: {
           userId: user.id,
           walletAddress: user.solanaWallet.address,
@@ -232,6 +242,18 @@ export async function POST(request: NextRequest) {
           failedAt: true,
         },
       })
+
+      await createDpmmLedgerEntry(tx, {
+        userId: user.id,
+        type: 'withdrawal_request',
+        delta: -amount,
+        balanceAfter: updatedUser.dpmmBalance,
+        reason: 'DPMM 출금 요청',
+        sourceType: 'solana_withdrawal_request',
+        sourceId: withdrawal.id,
+      })
+
+      return withdrawal
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     })

@@ -107,6 +107,18 @@ function statusLabel(status: string) {
   return status === 'suspended' ? '정지' : '활성'
 }
 
+function ledgerTypeLabel(type: string) {
+  if (type === 'opening_balance') return '초기 잔액'
+  if (type === 'welcome_bonus') return '웰컴 보너스'
+  if (type === 'admin_adjustment') return '관리자 조정'
+  if (type === 'prediction_stake') return '예측 참여'
+  if (type === 'market_payout') return '정산 보상'
+  if (type === 'market_fee') return '정산 수수료'
+  if (type === 'withdrawal_request') return '출금 요청'
+  if (type === 'withdrawal_refund') return '출금 복원'
+  return type
+}
+
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
   const filters = await searchParams
   const session = await auth()
@@ -200,11 +212,23 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             createdAt: true,
           },
         },
+        ledgerTransactions: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            type: true,
+            delta: true,
+            balanceAfter: true,
+            reason: true,
+            createdAt: true,
+          },
+        },
         _count: {
           select: {
             predictions: true,
             createdMarkets: true,
             balanceAdjustments: true,
+            ledgerTransactions: true,
           },
         },
       },
@@ -364,6 +388,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   const isLastActiveAdmin =
                     user.role === 'admin' && user.status === 'active' && activeAdminCount <= 1
                   const lastAdjustment = user.balanceAdjustments[0]
+                  const lastLedger = user.ledgerTransactions[0]
 
                   return (
                     <tr key={user.id} className="align-top transition hover:bg-primary/5">
@@ -423,9 +448,14 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                         <div className="text-sm font-black text-text-primary">
                           {user.dpmmBalance.toLocaleString()}
                         </div>
-                        {lastAdjustment && (
+                        {lastLedger && (
                           <div className="mt-1 max-w-[220px] text-xs font-semibold text-text-tertiary">
-                            최근 {lastAdjustment.delta > 0 ? '+' : ''}{lastAdjustment.delta.toLocaleString()} · {lastAdjustment.reason}
+                            최근 ledger {lastLedger.delta > 0 ? '+' : ''}{lastLedger.delta.toLocaleString()} · {ledgerTypeLabel(lastLedger.type)}
+                          </div>
+                        )}
+                        {lastAdjustment && (
+                          <div className="mt-1 max-w-[220px] text-xs font-semibold text-text-tertiary/80">
+                            조정 {lastAdjustment.delta > 0 ? '+' : ''}{lastAdjustment.delta.toLocaleString()} · {lastAdjustment.reason}
                           </div>
                         )}
                       </td>
@@ -434,7 +464,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                           예측 {user._count.predictions.toLocaleString()}건
                         </div>
                         <div className="mt-1 text-xs font-semibold text-text-tertiary">
-                          생성 마켓 {user._count.createdMarkets.toLocaleString()}개 · 조정 {user._count.balanceAdjustments.toLocaleString()}건
+                          생성 마켓 {user._count.createdMarkets.toLocaleString()}개 · ledger {user._count.ledgerTransactions.toLocaleString()}건 · 조정 {user._count.balanceAdjustments.toLocaleString()}건
                         </div>
                       </td>
                       <td className="px-4 py-4 text-sm font-bold text-text-secondary">

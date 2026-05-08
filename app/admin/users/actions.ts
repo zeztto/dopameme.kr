@@ -1,6 +1,7 @@
 'use server'
 
 import { auth } from '@/auth'
+import { createDpmmLedgerEntry } from '@/lib/dpmm/ledger'
 import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth-utils'
 import { Prisma } from '@prisma/client'
@@ -295,13 +296,24 @@ export async function adjustUserBalance(input: {
         throw new Error('NEGATIVE_BALANCE')
       }
 
-      await tx.userBalanceAdjustment.create({
+      const adjustment = await tx.userBalanceAdjustment.create({
         data: {
           userId,
           adminId: actorId,
           delta,
           reason,
         },
+      })
+
+      await createDpmmLedgerEntry(tx, {
+        userId,
+        actorId,
+        type: 'admin_adjustment',
+        delta,
+        balanceAfter: nextBalance,
+        reason,
+        sourceType: 'user_balance_adjustment',
+        sourceId: adjustment.id,
       })
 
       return {

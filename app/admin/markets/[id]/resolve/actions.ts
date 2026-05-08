@@ -1,6 +1,7 @@
 'use server'
 
 import { auth } from '@/auth'
+import { createDpmmLedgerEntry } from '@/lib/dpmm/ledger'
 import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth-utils'
 import { Prisma } from '@prisma/client'
@@ -22,6 +23,7 @@ export async function resolveMarket(formData: {
         error: '로그인이 필요합니다',
       }
     }
+    const actorId = session.user.id
 
     // 트랜잭션으로 결과 확정 및 보상 지급
     const result = await prisma.$transaction(async (tx) => {
@@ -125,22 +127,54 @@ export async function resolveMarket(formData: {
         })
 
         // 사용자에게 보상 지급
-        await tx.user.update({
+        const updatedUser = await tx.user.update({
           where: { id: prediction.userId },
           data: {
             dpmmBalance: { increment: netPayout },
           },
+          select: { dpmmBalance: true },
+        })
+
+        await createDpmmLedgerEntry(tx, {
+          userId: prediction.userId,
+          actorId,
+          type: 'market_payout',
+          delta: netPayout,
+          balanceAfter: updatedUser.dpmmBalance,
+          reason: '마켓 정산 보상',
+          sourceType: 'prediction',
+          sourceId: prediction.id,
         })
       }
 
       // 3. 수수료를 수수료 소각 계정에 입금
       if (totalFees > 0) {
-        await tx.user.updateMany({
+        const feeUpdate = await tx.user.updateMany({
           where: { id: 'fee-burn-account' },
           data: {
             dpmmBalance: { increment: totalFees },
           },
         })
+
+        if (feeUpdate.count === 1) {
+          const feeBurnUser = await tx.user.findUnique({
+            where: { id: 'fee-burn-account' },
+            select: { dpmmBalance: true },
+          })
+
+          if (feeBurnUser) {
+            await createDpmmLedgerEntry(tx, {
+              userId: 'fee-burn-account',
+              actorId,
+              type: 'market_fee',
+              delta: totalFees,
+              balanceAfter: feeBurnUser.dpmmBalance,
+              reason: '마켓 정산 수수료',
+              sourceType: 'market',
+              sourceId: formData.marketId,
+            })
+          }
+        }
       }
 
       // 4. 패배자 예측 레코드 업데이트

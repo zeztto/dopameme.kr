@@ -1,5 +1,6 @@
 'use server'
 
+import { createDpmmLedgerEntry } from '@/lib/dpmm/ledger'
 import { prisma } from '@/lib/db'
 import { checkRateLimit, getRequestIp } from '@/lib/rate-limit'
 import {
@@ -11,6 +12,8 @@ import {
 } from '@/lib/validation'
 import { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+
+const welcomeBonus = 10000
 
 export async function registerUser(formData: {
   email: string
@@ -96,15 +99,29 @@ export async function registerUser(formData: {
     // 비밀번호 해시화
     const hashedPassword = await bcrypt.hash(formData.password, 10)
 
-    // 사용자 생성
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        name,
-        password: hashedPassword, // 해시화된 비밀번호 저장
-        dpmmBalance: 10000, // 웰컴 보너스
-        emailVerified: null, // 이메일 인증 없이 바로 사용 가능
-      },
+    const newUser = await prisma.$transaction(async (tx) => {
+      // 사용자 생성
+      const user = await tx.user.create({
+        data: {
+          email,
+          name,
+          password: hashedPassword, // 해시화된 비밀번호 저장
+          dpmmBalance: welcomeBonus, // 웰컴 보너스
+          emailVerified: null, // 이메일 인증 없이 바로 사용 가능
+        },
+      })
+
+      await createDpmmLedgerEntry(tx, {
+        userId: user.id,
+        type: 'welcome_bonus',
+        delta: welcomeBonus,
+        balanceAfter: welcomeBonus,
+        reason: '회원가입 웰컴 보너스',
+        sourceType: 'signup',
+        sourceId: user.id,
+      })
+
+      return user
     })
 
     return {

@@ -1,6 +1,7 @@
 'use server'
 
 import { auth } from '@/auth'
+import { createDpmmLedgerEntry } from '@/lib/dpmm/ledger'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
@@ -176,13 +177,32 @@ export async function placePrediction(formData: {
       }
 
       // 1. 예측 생성
-      await tx.prediction.create({
+      const prediction = await tx.prediction.create({
         data: {
           userId,
           marketId,
           optionId,
           amount,
         },
+      })
+
+      const updatedUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: { dpmmBalance: true },
+      })
+
+      if (!updatedUser) {
+        throw new Error('USER_NOT_FOUND')
+      }
+
+      await createDpmmLedgerEntry(tx, {
+        userId,
+        type: 'prediction_stake',
+        delta: -amount,
+        balanceAfter: updatedUser.dpmmBalance,
+        reason: '예측 참여',
+        sourceType: 'prediction',
+        sourceId: prediction.id,
       })
 
       // 3. 옵션 통계 업데이트
@@ -234,6 +254,13 @@ export async function placePrediction(formData: {
       return {
         success: false,
         error: '유효하지 않은 선택지입니다',
+      }
+    }
+
+    if (error instanceof Error && error.message === 'USER_NOT_FOUND') {
+      return {
+        success: false,
+        error: '회원을 찾을 수 없습니다',
       }
     }
 

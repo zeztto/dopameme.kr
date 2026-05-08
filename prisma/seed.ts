@@ -36,6 +36,10 @@ async function main() {
   })
 
   const hashedPassword = await bcrypt.hash(adminPassword, 12)
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: adminEmail },
+    select: { id: true },
+  })
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
@@ -55,6 +59,20 @@ async function main() {
       emailVerified: new Date(),
     },
   })
+
+  if (!existingAdmin) {
+    await prisma.dpmmLedgerTransaction.create({
+      data: {
+        userId: admin.id,
+        type: 'welcome_bonus',
+        delta: 10000,
+        balanceAfter: 10000,
+        reason: 'Seed admin welcome bonus',
+        sourceType: 'seed',
+        sourceId: 'admin-bootstrap',
+      },
+    })
+  }
 
   const result = await seedMockMarkets(admin.id)
 

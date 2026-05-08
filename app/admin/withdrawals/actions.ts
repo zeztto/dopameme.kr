@@ -2,6 +2,7 @@
 
 import { auth } from '@/auth'
 import { requireAdmin } from '@/lib/auth-utils'
+import { createDpmmLedgerEntry } from '@/lib/dpmm/ledger'
 import { prisma } from '@/lib/db'
 import {
   WithdrawalTransactionVerificationError,
@@ -90,31 +91,6 @@ export async function approveWithdrawalRequest(input: {
       return { success: false, error: '요청 값이 올바르지 않습니다' }
     }
 
-    const request = await prisma.solanaWithdrawalRequest.findFirst({
-      where: {
-        id: requestId,
-        status: 'submitted',
-        txSignature: { not: null },
-      },
-      select: {
-        txSignature: true,
-        walletAddress: true,
-        cluster: true,
-        amount: true,
-      },
-    })
-
-    if (!request?.txSignature) {
-      throw new Error('INVALID_STATUS')
-    }
-
-    await verifyDpmmWithdrawalTransaction({
-      signature: request.txSignature,
-      walletAddress: request.walletAddress,
-      cluster: request.cluster,
-      amount: request.amount,
-    })
-
     const result = await prisma.solanaWithdrawalRequest.updateMany({
       where: {
         id: requestId,
@@ -188,11 +164,23 @@ export async function rejectWithdrawalRequest(input: {
         throw new Error('INVALID_STATUS')
       }
 
-      await tx.user.update({
+      const updatedUser = await tx.user.update({
         where: { id: request.userId },
         data: {
           dpmmBalance: { increment: request.amount },
         },
+        select: { dpmmBalance: true },
+      })
+
+      await createDpmmLedgerEntry(tx, {
+        userId: request.userId,
+        actorId,
+        type: 'withdrawal_refund',
+        delta: request.amount,
+        balanceAfter: updatedUser.dpmmBalance,
+        reason: note,
+        sourceType: 'solana_withdrawal_request',
+        sourceId: request.id,
       })
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -276,6 +264,31 @@ export async function confirmWithdrawalRequest(input: {
       return { success: false, error: '요청 값이 올바르지 않습니다' }
     }
 
+    const request = await prisma.solanaWithdrawalRequest.findFirst({
+      where: {
+        id: requestId,
+        status: 'submitted',
+        txSignature: { not: null },
+      },
+      select: {
+        txSignature: true,
+        walletAddress: true,
+        cluster: true,
+        amount: true,
+      },
+    })
+
+    if (!request?.txSignature) {
+      throw new Error('INVALID_STATUS')
+    }
+
+    await verifyDpmmWithdrawalTransaction({
+      signature: request.txSignature,
+      walletAddress: request.walletAddress,
+      cluster: request.cluster,
+      amount: request.amount,
+    })
+
     const result = await prisma.solanaWithdrawalRequest.updateMany({
       where: {
         id: requestId,
@@ -349,11 +362,23 @@ export async function failWithdrawalRequest(input: {
         throw new Error('INVALID_STATUS')
       }
 
-      await tx.user.update({
+      const updatedUser = await tx.user.update({
         where: { id: request.userId },
         data: {
           dpmmBalance: { increment: request.amount },
         },
+        select: { dpmmBalance: true },
+      })
+
+      await createDpmmLedgerEntry(tx, {
+        userId: request.userId,
+        actorId,
+        type: 'withdrawal_refund',
+        delta: request.amount,
+        balanceAfter: updatedUser.dpmmBalance,
+        reason: note,
+        sourceType: 'solana_withdrawal_request',
+        sourceId: request.id,
       })
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
