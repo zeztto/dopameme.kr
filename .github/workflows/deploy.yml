@@ -27,7 +27,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy dopameme-kr to p1zza-2nd
-    runs-on: [self-hosted, linux, x64, p1zza-1st, deployment]
+    runs-on: [self-hosted, linux, x64, p1zza-1st, deployment, dopameme-kr]
     environment: production
     timeout-minutes: 50
     env:
