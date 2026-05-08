@@ -12,6 +12,7 @@ export type SolanaTokenConfig = {
   tokenSymbol: string
   linkDomain: string
   explorerUrl: string
+  treasuryWalletAddress: string | null
 }
 
 const DEFAULT_CLUSTER: SolanaCluster = 'devnet'
@@ -72,6 +73,8 @@ export function getSolanaTokenConfig(): SolanaTokenConfig {
     linkDomain: getLinkDomain(),
     explorerUrl:
       process.env.DPMM_EXPLORER_URL?.trim() || 'https://explorer.solana.com',
+    treasuryWalletAddress:
+      process.env.DPMM_TREASURY_WALLET_ADDRESS?.trim() || null,
   }
 }
 

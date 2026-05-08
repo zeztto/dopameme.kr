@@ -22,12 +22,14 @@ model User {
 
   accounts                Account[]
   sessions                Session[]
-  createdMarkets          Market[]                @relation("MarketCreator")
+  createdMarkets          Market[]                  @relation("MarketCreator")
   predictions             Prediction[]
-  balanceAdjustments      UserBalanceAdjustment[] @relation("UserBalanceAdjustments")
-  adminBalanceAdjustments UserBalanceAdjustment[] @relation("AdminBalanceAdjustments")
+  balanceAdjustments      UserBalanceAdjustment[]   @relation("UserBalanceAdjustments")
+  adminBalanceAdjustments UserBalanceAdjustment[]   @relation("AdminBalanceAdjustments")
   solanaWallet            SolanaWallet?
   solanaWalletNonces      SolanaWalletNonce[]
+  withdrawalRequests      SolanaWithdrawalRequest[] @relation("UserWithdrawalRequests")
+  reviewedWithdrawals     SolanaWithdrawalRequest[] @relation("AdminWithdrawalReviews")
 
   @@index([role])
   @@index([status])
@@ -67,6 +69,35 @@ model SolanaWalletNonce {
   @@index([address])
   @@index([expiresAt])
   @@map("solana_wallet_nonces")
+}
+
+model SolanaWithdrawalRequest {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  walletAddress String    @map("wallet_address")
+  cluster       String    @default("devnet")
+  amount        Int
+  status        String    @default("pending")
+  txSignature   String?   @unique @map("tx_signature")
+  adminId       String?   @map("admin_id")
+  adminNote     String?   @map("admin_note") @db.Text
+  userNote      String?   @map("user_note") @db.Text
+  requestedAt   DateTime  @default(now()) @map("requested_at")
+  reviewedAt    DateTime? @map("reviewed_at")
+  submittedAt   DateTime? @map("submitted_at")
+  confirmedAt   DateTime? @map("confirmed_at")
+  failedAt      DateTime? @map("failed_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user  User  @relation("UserWithdrawalRequests", fields: [userId], references: [id], onDelete: Cascade)
+  admin User? @relation("AdminWithdrawalReviews", fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([adminId])
+  @@index([status])
+  @@index([requestedAt])
+  @@index([walletAddress])
+  @@map("solana_withdrawal_requests")
 }
 
 model UserBalanceAdjustment {

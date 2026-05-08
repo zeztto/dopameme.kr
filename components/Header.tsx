@@ -51,7 +51,7 @@ export default function Header({
                   prefetch={false}
                   className="bg-white border-2 border-secondary text-secondary px-4 py-2.5 sm:px-6 rounded-full font-bold hover:bg-secondary hover:text-white transition text-sm"
                 >
-                  지갑
+                  출금
                 </Link>
                 <LogoutButton />
               </>

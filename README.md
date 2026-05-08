@@ -77,6 +77,7 @@ docs/
 ### Web3
 - **Solana devnet**: DPMM Token-2022 mint 연결
 - **Wallet signing**: nonce 기반 외부 지갑 주소 검증
+- **Withdrawals**: 장부 DPMM 출금 요청 및 관리자 수동 전송 기록
 
 ### Deployment
 - **Hosting**: Vultr (`p1zza-2nd`)
@@ -148,6 +149,7 @@ dopameme.kr/
 - `/admin/markets` - 마켓 관리
 - `/admin/markets/create` - 마켓 생성
 - `/admin/users` - 회원 관리
+- `/admin/withdrawals` - DPMM 출금 요청 관리
 
 ---
 
@@ -165,6 +167,7 @@ dopameme.kr/
 - 자동 닉네임 생성
 - 순위표
 - Solana devnet DPMM 지갑 연결 및 on-chain 잔액 조회
+- 장부 DPMM 출금 요청
 
 ### 관리자 기능
 - 예측 마켓 생성
@@ -172,6 +175,7 @@ dopameme.kr/
 - 마켓 가리기/삭제
 - 회원 권한/상태 관리
 - 회원 DPMM 잔액 조정 및 조정 이력 기록
+- DPMM 출금 요청 승인/거절 및 transaction signature 기록
 
 ---
 
@@ -202,6 +206,8 @@ SOLANA_RPC_URL=https://api.devnet.solana.com
 DPMM_MINT_ADDRESS=6fQ3D623QNsskcsdwHvUNgutFp1ptbQWUAYSoLFZTeyc
 DPMM_TOKEN_PROGRAM=token-2022
 DPMM_DECIMALS=9
+DPMM_MIN_WITHDRAWAL_AMOUNT=1000
+DPMM_TREASURY_WALLET_ADDRESS=
 ```
 
 `DATABASE_URL`에 특수문자가 포함된 비밀번호를 넣는 경우 URL percent-encoding을 적용하세요.

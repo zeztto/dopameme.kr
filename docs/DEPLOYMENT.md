@@ -47,6 +47,8 @@ Required values:
 - `DPMM_TOKEN_SYMBOL`
 - `DPMM_WALLET_LINK_DOMAIN`
 - `DPMM_EXPLORER_URL`
+- `DPMM_MIN_WITHDRAWAL_AMOUNT`
+- `DPMM_TREASURY_WALLET_ADDRESS` (optional public address)
 - `NODE_ENV`
 - `PORT`
 - `HOSTNAME`
@@ -80,3 +82,8 @@ gh workflow run "Deploy service with Docker Compose" \
 - Keep `AUTH_URL` and `NEXTAUTH_URL` set to `https://dopameme.kr` in production.
 - Solana values are public token/RPC settings only. Do not place mint authority,
   keypair, seed phrase, or private key values in the app environment.
+- The current withdrawal flow is manual-signature operation: admin records a
+  Solana transaction signature after treasury transfer. The app validates the
+  confirmed transaction's DPMM mint, destination wallet, and amount through the
+  configured RPC. If `DPMM_TREASURY_WALLET_ADDRESS` is set, the source wallet
+  delta is also validated. No treasury private key is required in this app.

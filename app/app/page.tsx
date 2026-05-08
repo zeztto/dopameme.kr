@@ -90,7 +90,7 @@ export default async function DashboardPage() {
               href="/app/wallet"
               className="bg-white text-secondary border-3 border-secondary px-8 py-6 rounded-full font-black hover:bg-secondary hover:text-white transition text-lg shadow-md"
             >
-              DPMM 지갑 연결
+              DPMM 출금 지갑
             </Link>
           </div>
         </section>
@@ -126,7 +126,7 @@ export default async function DashboardPage() {
               <h4 className="text-text-primary font-black mb-6 text-lg">서비스</h4>
               <ul className="space-y-4 text-base">
                 <li><Link href="/app" className="text-text-secondary hover:text-primary transition font-semibold">내 활동</Link></li>
-                <li><Link href="/app/wallet" className="text-text-secondary hover:text-primary transition font-semibold">DPMM 지갑</Link></li>
+                <li><Link href="/app/wallet" className="text-text-secondary hover:text-primary transition font-semibold">DPMM 출금 지갑</Link></li>
                 <li><Link href="/markets" className="text-text-secondary hover:text-primary transition font-semibold">예측 시장</Link></li>
                 <li><Link href="/leaderboard" className="text-text-secondary hover:text-primary transition font-semibold">순위표</Link></li>
               </ul>

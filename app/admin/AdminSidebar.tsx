@@ -14,6 +14,7 @@ const navItems = [
   { href: '/admin/markets', label: '마켓 관리', description: '목업 및 운영 마켓' },
   { href: '/admin/markets/create', label: '마켓 생성', description: '신규 예측 등록' },
   { href: '/admin/users', label: '회원 관리', description: '권한, 상태, DPMM' },
+  { href: '/admin/withdrawals', label: '출금 관리', description: 'DPMM 출금 승인' },
 ]
 
 export default function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
