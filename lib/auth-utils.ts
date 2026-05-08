@@ -10,10 +10,10 @@ export async function isAdmin() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true },
+    select: { role: true, status: true },
   })
 
-  return user?.role === 'admin'
+  return user?.role === 'admin' && user.status === 'active'
 }
 
 export async function requireAdmin() {

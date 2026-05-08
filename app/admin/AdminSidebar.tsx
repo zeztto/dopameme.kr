@@ -13,6 +13,7 @@ const navItems = [
   { href: '/admin', label: '대시보드', description: '운영 현황' },
   { href: '/admin/markets', label: '마켓 관리', description: '목업 및 운영 마켓' },
   { href: '/admin/markets/create', label: '마켓 생성', description: '신규 예측 등록' },
+  { href: '/admin/users', label: '회원 관리', description: '권한, 상태, DPMM' },
 ]
 
 export default function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {

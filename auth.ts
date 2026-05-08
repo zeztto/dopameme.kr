@@ -57,6 +57,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error('이메일 또는 비밀번호가 올바르지 않습니다')
         }
 
+        if (user.status !== 'active') {
+          throw new Error('이 계정은 이용이 제한되었습니다')
+        }
+
         // 비밀번호가 없는 경우 (OAuth로 가입한 사용자)
         if (!user.password) {
           throw new Error('이메일 또는 비밀번호가 올바르지 않습니다')
@@ -82,10 +86,54 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === 'credentials') {
+        return true
+      }
+
+      const email = normalizeEmail(user.email)
+
+      if (!email) {
+        return true
+      }
+
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+        select: { status: true },
+      })
+
+      return !existingUser || existingUser.status === 'active'
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
       }
+
+      if (!token.id) {
+        return token
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: token.id as string },
+        select: {
+          status: true,
+          sessionVersion: true,
+        },
+      })
+
+      if (!dbUser || dbUser.status !== 'active') {
+        return null
+      }
+
+      if (
+        typeof token.sessionVersion === 'number' &&
+        token.sessionVersion !== dbUser.sessionVersion
+      ) {
+        return null
+      }
+
+      token.sessionVersion = dbUser.sessionVersion
+
       return token
     },
     async session({ session, token }) {

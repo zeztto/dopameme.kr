@@ -30,6 +30,7 @@ async function main() {
       email: 'fee-burn@dopameme.local',
       name: 'fee-burn-account',
       role: 'system',
+      status: 'active',
       dpmmBalance: 0,
     },
   })
@@ -42,12 +43,14 @@ async function main() {
       name: adminName,
       password: hashedPassword,
       role: 'admin',
+      status: 'active',
     },
     create: {
       email: adminEmail,
       name: adminName,
       password: hashedPassword,
       role: 'admin',
+      status: 'active',
       dpmmBalance: 10000,
       emailVerified: new Date(),
     },

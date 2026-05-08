@@ -51,10 +51,17 @@ export async function placePrediction(formData: {
     // 사용자 잔액 확인
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { dpmmBalance: true },
+      select: { dpmmBalance: true, status: true },
     })
 
-    if (!user || user.dpmmBalance < amount) {
+    if (!user || user.status !== 'active') {
+      return {
+        success: false,
+        error: '이 계정은 현재 예측에 참여할 수 없습니다',
+      }
+    }
+
+    if (user.dpmmBalance < amount) {
       return {
         success: false,
         error: 'DPMM 잔액이 부족합니다',
@@ -156,6 +163,7 @@ export async function placePrediction(formData: {
       const balanceUpdate = await tx.user.updateMany({
         where: {
           id: userId,
+          status: 'active',
           dpmmBalance: { gte: amount },
         },
         data: {

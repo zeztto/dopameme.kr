@@ -139,8 +139,10 @@ dopameme.kr/
 - `/leaderboard` - 순위표
 
 ### 관리자 페이지
+- `/admin` - 운영 대시보드
+- `/admin/markets` - 마켓 관리
 - `/admin/markets/create` - 마켓 생성
-- `/admin/markets/[id]/resolve` - 결과 확정
+- `/admin/users` - 회원 관리
 
 ---
 
@@ -162,6 +164,8 @@ dopameme.kr/
 - 예측 마켓 생성
 - 결과 확정 및 보상 분배
 - 마켓 가리기/삭제
+- 회원 권한/상태 관리
+- 회원 DPMM 잔액 조정 및 조정 이력 기록
 
 ---
 

@@ -44,40 +44,46 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
     createdAt: Date
     optionTitle: string
   }[] = []
+  let activeUser = false
 
   if (session?.user?.id) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { dpmmBalance: true },
+      select: { dpmmBalance: true, status: true },
     })
 
-    userBalance = user?.dpmmBalance || 0
+    if (user?.status === 'active') {
+      activeUser = true
+      userBalance = user.dpmmBalance
+    }
 
     // 사용자가 이 마켓에 참여한 예측 조회
-    const userPredictionRows = await prisma.prediction.findMany({
-      where: {
-        userId: session.user.id,
-        marketId: id,
-      },
-      select: {
-        id: true,
-        amount: true,
-        optionId: true,
-        createdAt: true,
-        option: {
-          select: { title: true },
+    if (activeUser) {
+      const userPredictionRows = await prisma.prediction.findMany({
+        where: {
+          userId: session.user.id,
+          marketId: id,
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+        select: {
+          id: true,
+          amount: true,
+          optionId: true,
+          createdAt: true,
+          option: {
+            select: { title: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
 
-    userPredictions = userPredictionRows.map((prediction) => ({
-      id: prediction.id,
-      amount: prediction.amount,
-      optionId: prediction.optionId,
-      createdAt: prediction.createdAt,
-      optionTitle: prediction.option.title,
-    }))
+      userPredictions = userPredictionRows.map((prediction) => ({
+        id: prediction.id,
+        amount: prediction.amount,
+        optionId: prediction.optionId,
+        createdAt: prediction.createdAt,
+        optionTitle: prediction.option.title,
+      }))
+    }
   }
 
   const hasParticipated = userPredictions.length > 0
@@ -85,14 +91,14 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
 
   // 마감 여부 확인
   const isEnded = new Date() > new Date(market.endsAt)
-  const canBet = session?.user && market.status === 'active' && !isEnded && !market.hidden
+  const canBet = activeUser && market.status === 'active' && !isEnded && !market.hidden
 
   return (
     <div className="min-h-screen bg-white">
       <Header
         showBackToMarkets={true}
-        isAuthenticated={!!session?.user}
-        userBalance={session?.user ? userBalance : undefined}
+        isAuthenticated={activeUser}
+        userBalance={activeUser ? userBalance : undefined}
       />
 
       <main className="container mx-auto px-4 py-12">

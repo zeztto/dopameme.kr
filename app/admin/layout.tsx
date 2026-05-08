@@ -29,10 +29,15 @@ export default async function AdminLayout({
       name: true,
       email: true,
       role: true,
+      status: true,
     },
   })
 
-  if (user?.role !== 'admin') {
+  if (user?.status !== 'active') {
+    redirect('/login')
+  }
+
+  if (user.role !== 'admin') {
     redirect('/markets')
   }
 
@@ -52,4 +57,3 @@ export default async function AdminLayout({
     </div>
   )
 }
-

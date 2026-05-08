@@ -8,6 +8,16 @@ import Header from "@/components/Header"
 export default async function MarketsPage() {
   const session = await auth()
   const admin = await isAdmin()
+  let activeUser = false
+
+  if (session?.user?.id) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { status: true },
+    })
+
+    activeUser = user?.status === 'active'
+  }
 
   // 활성 및 확정된 마켓 조회
   const allMarketsRaw = await prisma.market.findMany({
@@ -61,7 +71,7 @@ export default async function MarketsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header isAuthenticated={!!session?.user} />
+      <Header isAuthenticated={activeUser} />
 
       <main className="container mx-auto px-4 py-20">
         {/* Admin Button */}

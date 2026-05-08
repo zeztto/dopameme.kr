@@ -7,15 +7,19 @@ import Header from "@/components/Header"
 export default async function DashboardPage() {
   const session = await auth()
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/login")
   }
 
   // 사용자 정보 조회 (DPMM 밸런스 포함)
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id as string },
-    select: { dpmmBalance: true },
+    select: { dpmmBalance: true, status: true },
   })
+
+  if (!dbUser || dbUser.status !== 'active') {
+    redirect("/login")
+  }
 
   const dpmmBalance = dbUser?.dpmmBalance || 0
 

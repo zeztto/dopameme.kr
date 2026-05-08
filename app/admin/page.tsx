@@ -69,7 +69,7 @@ export default async function AdminDashboardPage() {
         },
       }),
       prisma.marketOption.aggregate({ _sum: { totalAmount: true } }),
-      prisma.user.count(),
+      prisma.user.count({ where: { role: { not: 'system' } } }),
       prisma.user.count({ where: { role: 'admin' } }),
       prisma.prediction.count(),
       prisma.prediction.aggregate({ _sum: { amount: true } }),
