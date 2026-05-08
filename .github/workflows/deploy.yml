@@ -1,0 +1,166 @@
+name: Deploy dopameme-kr
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      install_caddy:
+        description: "Install/reload infra/caddy/dopameme-kr.caddy"
+        required: true
+        default: false
+        type: boolean
+      health_url:
+        description: "Public HTTPS health URL"
+        required: false
+        default: "https://dopameme.kr/api/health"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-dopameme-kr
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy dopameme-kr to p1zza-2nd
+    runs-on: [self-hosted, linux, x64, p1zza-1st, deployment]
+    environment: production
+    timeout-minutes: 50
+    env:
+      DEPLOY_SSH_HOST: p1zza-2nd
+      DEPLOY_ROOT: /opt
+      SERVICE_NAME: dopameme-kr
+      COMPOSE_FILES: compose.yml
+      CADDY_SITE_FILE: infra/caddy/dopameme-kr.caddy
+      HEALTH_URL: ${{ inputs.health_url || 'https://dopameme.kr/api/health' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Validate deployment inputs
+        run: |
+          set -euo pipefail
+          case "$SERVICE_NAME" in
+            ''|.*|-*|*[!a-zA-Z0-9._-]*)
+              echo "unsafe SERVICE_NAME: $SERVICE_NAME" >&2
+              exit 1
+              ;;
+            caddy|containerd|migration-backups|vultr|actions-runner|docker|root|tmp|lost+found)
+              echo "reserved SERVICE_NAME: $SERVICE_NAME" >&2
+              exit 1
+              ;;
+          esac
+          case "$DEPLOY_SSH_HOST" in
+            p1zza-2nd) ;;
+            *) echo "deploy host is not allowed: $DEPLOY_SSH_HOST" >&2; exit 1 ;;
+          esac
+          for file in $COMPOSE_FILES; do
+            case "$file" in
+              ''|/*|*..*|./*|-*|*/-*|*[!a-zA-Z0-9._/-]*)
+                echo "unsafe compose file path: $file" >&2
+                exit 1
+                ;;
+            esac
+            test -f "$file"
+          done
+          case "$CADDY_SITE_FILE" in
+            ''|/*|*..*|./*|-*|*/-*|*[!a-zA-Z0-9._/-]*)
+              echo "unsafe caddy site file path: $CADDY_SITE_FILE" >&2
+              exit 1
+              ;;
+          esac
+          test -f "$CADDY_SITE_FILE"
+          if [ -n "$HEALTH_URL" ]; then
+            case "$HEALTH_URL" in
+              https://*) ;;
+              *) echo "health_url must start with https:// or be empty" >&2; exit 1 ;;
+            esac
+            case "$HEALTH_URL" in
+              https://localhost*|https://127.*|https://0.*|https://169.254.*|https://10.*|https://192.168.*|https://172.1[6-9].*|https://172.2[0-9].*|https://172.3[0-1].*|https://[[]*)
+                echo "health_url must target a public HTTPS host" >&2
+                exit 1
+                ;;
+            esac
+          fi
+
+      - name: Verify deploy server
+        run: /usr/local/sbin/p1zza-actions-lock deploy -- ssh "$DEPLOY_SSH_HOST" "sudo -n /usr/local/sbin/p1zza-deploy-check"
+
+      - name: Sync service files to p1zza-2nd
+        run: |
+          set -euo pipefail
+          /usr/local/sbin/p1zza-actions-lock deploy -- bash <<'LOCKED'
+          set -euo pipefail
+          remote_dir="${DEPLOY_ROOT}/${SERVICE_NAME}"
+          ssh "$DEPLOY_SSH_HOST" bash -s -- "$SERVICE_NAME" <<'REMOTE'
+          set -euo pipefail
+          service_name="$1"
+          sudo -n /usr/local/sbin/p1zza-deploy-prepare "$service_name"
+          REMOTE
+          rsync -az --delete \
+            --exclude .git \
+            --exclude .github \
+            --exclude node_modules \
+            --exclude .next \
+            --exclude .env \
+            --exclude '.env.*' \
+            --exclude '*.env' \
+            --exclude data \
+            --exclude uploads \
+            --exclude storage \
+            --exclude tsconfig.tsbuildinfo \
+            "$GITHUB_WORKSPACE/" "${DEPLOY_SSH_HOST}:${remote_dir}/"
+          LOCKED
+
+      - name: Deploy compose project
+        run: |
+          set -euo pipefail
+          /usr/local/sbin/p1zza-actions-lock deploy -- bash <<'LOCKED'
+          set -euo pipefail
+          ssh "$DEPLOY_SSH_HOST" bash -s -- "$SERVICE_NAME" "$COMPOSE_FILES" <<'REMOTE'
+          set -euo pipefail
+          service_name="$1"
+          compose_files="$2"
+          sudo -n /usr/local/sbin/p1zza-deploy-compose "$service_name" "$compose_files"
+          REMOTE
+          LOCKED
+
+      - name: Install and reload Caddy site
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.install_caddy }}
+        run: |
+          set -euo pipefail
+          /usr/local/sbin/p1zza-actions-lock deploy -- bash <<'LOCKED'
+          set -euo pipefail
+          tmp_remote="/tmp/${SERVICE_NAME}.caddy.$$"
+          rsync -az "$GITHUB_WORKSPACE/$CADDY_SITE_FILE" "${DEPLOY_SSH_HOST}:${tmp_remote}"
+          ssh "$DEPLOY_SSH_HOST" bash -s -- "$SERVICE_NAME" "$tmp_remote" <<'REMOTE'
+          set -euo pipefail
+          service_name="$1"
+          tmp_remote="$2"
+          sudo -n /usr/local/sbin/p1zza-deploy-caddy "$service_name" "$tmp_remote"
+          REMOTE
+          LOCKED
+
+      - name: Health check
+        if: ${{ env.HEALTH_URL != '' }}
+        run: |
+          set -euo pipefail
+          /usr/local/sbin/p1zza-actions-lock deploy -- bash <<'LOCKED'
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$HEALTH_URL" >/dev/null; then
+              echo "health check passed"
+              exit 0
+            fi
+            echo "waiting for health check: attempt ${attempt}/30"
+            sleep 2
+          done
+          echo "health check failed: $HEALTH_URL" >&2
+          exit 1
+          LOCKED
