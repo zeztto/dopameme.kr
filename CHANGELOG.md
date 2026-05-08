@@ -19,3 +19,4 @@
 - Added ledger-based DPMM withdrawal requests with admin approval, user-facing rejection notes, and RPC transaction validation.
 - Added append-only DPMM ledger transactions for signup, predictions, settlement, admin adjustments, and withdrawal flows.
 - Added admin member detail pages with DPMM ledger, prediction, withdrawal, and balance adjustment history.
+- Added a login-protected DPMM leaderboard with Top 100 users and current-user ranking.
