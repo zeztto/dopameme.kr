@@ -150,6 +150,7 @@ dopameme.kr/
 - `/admin/markets` - 마켓 관리
 - `/admin/markets/create` - 마켓 생성
 - `/admin/users` - 회원 관리
+- `/admin/users/[id]` - 회원 상세 및 DPMM ledger 조회
 - `/admin/withdrawals` - DPMM 출금 요청 관리
 
 ---
@@ -176,7 +177,7 @@ dopameme.kr/
 - 결과 확정 및 보상 분배
 - 마켓 가리기/삭제
 - 회원 권한/상태 관리
-- 회원 DPMM 잔액 조정 및 ledger 이력 기록
+- 회원 DPMM 잔액 조정 및 상세 ledger 이력 조회
 - DPMM 출금 요청 승인/거절 및 transaction signature 기록
 
 ---

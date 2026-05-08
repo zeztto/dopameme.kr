@@ -393,9 +393,12 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   return (
                     <tr key={user.id} className="align-top transition hover:bg-primary/5">
                       <td className="px-5 py-4">
-                        <div className="font-black text-text-primary">
+                        <Link
+                          href={`/admin/users/${user.id}`}
+                          className="font-black text-text-primary hover:text-primary"
+                        >
                           {user.name || '이름 없음'}
-                        </div>
+                        </Link>
                         <div className="mt-1 text-sm font-semibold text-text-secondary">
                           {user.email || '이메일 없음'}
                         </div>
@@ -471,6 +474,12 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                         {formatDate(user.createdAt)}
                       </td>
                       <td className="px-5 py-4">
+                        <Link
+                          href={`/admin/users/${user.id}`}
+                          className="mb-3 inline-flex rounded-dopameme-pill border-2 border-light-border px-3 py-2 text-xs font-black text-text-secondary transition hover:border-primary hover:text-primary"
+                        >
+                          상세
+                        </Link>
                         <AdminUserActions
                           userId={user.id}
                           role={user.role}
