@@ -71,6 +71,7 @@ model Market {
   category        String
   imageUrl        String?   @map("image_url")
   status          String    @default("active")
+  source          String    @default("admin")
   hidden          Boolean   @default(false)
   creatorId       String    @map("creator_id")
   createdAt       DateTime  @default(now()) @map("created_at")
@@ -83,6 +84,7 @@ model Market {
   predictions Prediction[]
 
   @@index([status])
+  @@index([source])
   @@index([hidden])
   @@index([creatorId])
   @@map("markets")

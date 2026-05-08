@@ -119,7 +119,11 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
                 </span>
               )}
               {admin && (
-                <ToggleHiddenButton marketId={market.id} initialHidden={market.hidden} />
+                <ToggleHiddenButton
+                  marketId={market.id}
+                  initialHidden={market.hidden}
+                  canDelete={market.hidden && market.status !== 'resolved' && totalPredictions === 0}
+                />
               )}
             </div>
 

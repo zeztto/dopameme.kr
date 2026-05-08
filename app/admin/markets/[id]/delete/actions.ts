@@ -22,7 +22,15 @@ export async function deleteMarket(marketId: string) {
     // 마켓 존재 확인
     const market = await prisma.market.findUnique({
       where: { id: marketId },
-      select: { hidden: true },
+      select: {
+        hidden: true,
+        status: true,
+        _count: {
+          select: {
+            predictions: true,
+          },
+        },
+      },
     })
 
     if (!market) {
@@ -40,12 +48,21 @@ export async function deleteMarket(marketId: string) {
       }
     }
 
+    if (market.status === 'resolved' || market._count.predictions > 0) {
+      return {
+        success: false,
+        error: '참여 또는 정산 이력이 있는 마켓은 삭제할 수 없습니다. 숨김 상태로 보관해주세요.',
+      }
+    }
+
     // 마켓 삭제 (CASCADE로 관련 데이터도 자동 삭제됨)
     await prisma.market.delete({
       where: { id: marketId },
     })
 
     // 캐시 재검증
+    revalidatePath('/admin')
+    revalidatePath('/admin/markets')
     revalidatePath('/markets')
     revalidatePath('/app')
 

@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 
+const tokenColor = (name: string) => `rgb(var(${name}) / <alpha-value>)`;
+
 const config: Config = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,40 +11,57 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        // Light mode color palette - Red & Blue dominant for betting game
+        background: tokenColor("--surface-canvas"),
+        foreground: tokenColor("--content-primary"),
         light: {
-          bg: '#FFFFFF',
-          'bg-alt': '#F7F9FC',
-          card: '#FFFFFF',
-          border: '#E2E8F0',
+          bg: tokenColor("--surface-canvas"),
+          "bg-alt": tokenColor("--surface-muted"),
+          card: tokenColor("--component-card-bg"),
+          border: tokenColor("--border-default"),
         },
         primary: {
-          DEFAULT: '#2563EB', // Bright Blue - Trust & Tech
-          light: '#60A5FA',
-          dark: '#1E40AF',
+          DEFAULT: tokenColor("--brand-primary"),
+          light: tokenColor("--brand-primary-soft"),
+          dark: tokenColor("--brand-primary-strong"),
         },
         secondary: {
-          DEFAULT: '#DC2626', // Vibrant Red - Excitement
-          light: '#EF4444',
-          dark: '#B91C1C',
+          DEFAULT: tokenColor("--brand-secondary"),
+          light: tokenColor("--brand-secondary-soft"),
+          dark: tokenColor("--brand-secondary-strong"),
         },
         accent: {
-          purple: '#8B5CF6', // Purple - Premium
-          cyan: '#06B6D4', // Cyan - Modern
-          yellow: '#F59E0B', // Yellow - Attention
+          purple: tokenColor("--accent-premium"),
+          cyan: tokenColor("--accent-data"),
+          yellow: tokenColor("--accent-attention"),
         },
+        warning: tokenColor("--accent-attention"),
         success: {
-          DEFAULT: '#10B981', // Green - Win/Up
-          light: '#34D399',
-          dark: '#059669',
+          DEFAULT: tokenColor("--status-success"),
+          light: tokenColor("--status-success-soft"),
+          dark: tokenColor("--status-success-strong"),
         },
         text: {
-          primary: '#1F2937',
-          secondary: '#4B5563',
-          tertiary: '#9CA3AF',
-        }
+          primary: tokenColor("--content-primary"),
+          secondary: tokenColor("--content-secondary"),
+          tertiary: tokenColor("--content-tertiary"),
+        },
+      },
+      borderWidth: {
+        3: "3px",
+      },
+      borderRadius: {
+        "dopameme-sm": "var(--radius-sm)",
+        "dopameme-md": "var(--radius-md)",
+        "dopameme-lg": "var(--radius-lg)",
+        "dopameme-xl": "var(--radius-xl)",
+        "dopameme-pill": "var(--radius-pill)",
+      },
+      boxShadow: {
+        "token-sm": "var(--shadow-sm)",
+        "token-md": "var(--shadow-md)",
+        "token-lg": "var(--shadow-lg)",
+        "token-xl": "var(--shadow-xl)",
+        "token-brand": "var(--shadow-brand)",
       },
     },
   },

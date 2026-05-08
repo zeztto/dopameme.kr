@@ -8,9 +8,10 @@ import { deleteMarket } from '@/app/admin/markets/[id]/delete/actions'
 type Props = {
   marketId: string
   initialHidden: boolean
+  canDelete?: boolean
 }
 
-export default function ToggleHiddenButton({ marketId, initialHidden }: Props) {
+export default function ToggleHiddenButton({ marketId, initialHidden, canDelete = false }: Props) {
   const [hidden, setHidden] = useState(initialHidden)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -59,13 +60,15 @@ export default function ToggleHiddenButton({ marketId, initialHidden }: Props) {
         >
           {loading ? '처리중...' : '보이기'}
         </button>
-        <button
-          onClick={handleDelete}
-          disabled={loading}
-          className="px-4 py-2 rounded-full font-bold text-sm transition bg-secondary-dark text-white hover:bg-secondary disabled:opacity-50"
-        >
-          {loading ? '처리중...' : '삭제하기'}
-        </button>
+        {canDelete && (
+          <button
+            onClick={handleDelete}
+            disabled={loading}
+            className="px-4 py-2 rounded-full font-bold text-sm transition bg-secondary-dark text-white hover:bg-secondary disabled:opacity-50"
+          >
+            {loading ? '처리중...' : '삭제하기'}
+          </button>
+        )}
       </div>
     )
   }

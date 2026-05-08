@@ -73,8 +73,7 @@ export default function CreateMarketForm() {
 
   if (success) {
     return (
-      <div className="bg-success/10 border-3 border-success rounded-3xl p-12 text-center">
-        <div className="text-6xl mb-6">🎉</div>
+      <div className="rounded-dopameme-lg border-3 border-success bg-success/10 p-12 text-center">
         <h2 className="text-3xl font-black text-text-primary mb-4">
           마켓이 생성되었습니다!
         </h2>
@@ -86,10 +85,10 @@ export default function CreateMarketForm() {
   }
 
   return (
-    <div className="bg-white border-3 border-primary/20 rounded-3xl p-8 shadow-xl">
+    <div className="rounded-dopameme-lg border-3 border-primary/20 bg-white p-8 shadow-token-sm">
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="bg-secondary/10 border-2 border-secondary text-secondary px-4 py-3 rounded-xl text-sm font-semibold">
+          <div className="rounded-dopameme-md border-2 border-secondary bg-secondary/10 px-4 py-3 text-sm font-semibold text-secondary">
             {error}
           </div>
         )}
@@ -106,7 +105,7 @@ export default function CreateMarketForm() {
             onChange={(e) => setTitle(e.target.value)}
             required
             minLength={5}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-primary focus:outline-none text-text-primary font-medium"
+            className="w-full rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
             placeholder="예: 2025년 비트코인 가격이 10만 달러를 돌파할까요?"
           />
         </div>
@@ -123,7 +122,7 @@ export default function CreateMarketForm() {
             required
             minLength={10}
             rows={4}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-primary focus:outline-none text-text-primary font-medium"
+            className="w-full rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
             placeholder="마켓에 대한 자세한 설명을 입력하세요"
           />
         </div>
@@ -138,7 +137,7 @@ export default function CreateMarketForm() {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             required
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-primary focus:outline-none text-text-primary font-medium"
+            className="w-full rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
           >
             {categories.map((cat) => (
               <option key={cat} value={cat}>
@@ -158,7 +157,7 @@ export default function CreateMarketForm() {
             type="url"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-primary focus:outline-none text-text-primary font-medium"
+            className="w-full rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
             placeholder="https://example.com/image.jpg"
           />
         </div>
@@ -174,7 +173,7 @@ export default function CreateMarketForm() {
             value={endsAt}
             onChange={(e) => setEndsAt(e.target.value)}
             required
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-primary focus:outline-none text-text-primary font-medium"
+            className="w-full rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
           />
         </div>
 
@@ -189,13 +188,13 @@ export default function CreateMarketForm() {
                   value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
                   placeholder={`선택지 ${index + 1}`}
-                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-primary focus:outline-none text-text-primary font-medium"
+                  className="flex-1 rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
                 />
                 {options.length > 2 && (
                   <button
                     type="button"
                     onClick={() => removeOption(index)}
-                    className="bg-secondary text-white px-4 py-3 rounded-xl font-bold hover:bg-secondary-dark transition"
+                    className="rounded-dopameme-md bg-secondary px-4 py-3 font-bold text-white transition hover:bg-secondary-dark"
                   >
                     삭제
                   </button>
@@ -206,7 +205,7 @@ export default function CreateMarketForm() {
           <button
             type="button"
             onClick={addOption}
-            className="mt-3 bg-primary/10 text-primary px-6 py-3 rounded-xl font-bold hover:bg-primary hover:text-white transition"
+            className="mt-3 rounded-dopameme-pill bg-primary/10 px-6 py-3 font-bold text-primary transition hover:bg-primary hover:text-white"
           >
             + 선택지 추가
           </button>
@@ -216,7 +215,7 @@ export default function CreateMarketForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-primary text-white px-6 py-4 rounded-full font-black hover:bg-primary-dark hover:shadow-2xl transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-dopameme-pill bg-primary px-6 py-4 text-lg font-black text-white shadow-token-brand transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? '생성 중...' : '마켓 생성'}
         </button>

@@ -1,39 +1,17 @@
-import { redirect } from 'next/navigation'
-import { isAdmin } from '@/lib/auth-utils'
-import Link from 'next/link'
 import CreateMarketForm from './CreateMarketForm'
-import Header from '@/components/Header'
 
 export default async function CreateMarketPage() {
-  const admin = await isAdmin()
-
-  if (!admin) {
-    redirect('/markets')
-  }
-
   return (
-    <div className="min-h-screen bg-white">
-      <Header showBackToMarkets={true} isAuthenticated={true} />
+    <div className="mx-auto max-w-3xl space-y-8">
+      <header className="border-b-3 border-primary/15 pb-6">
+        <div className="text-sm font-black text-primary">Market Operations</div>
+        <h1 className="mt-2 text-4xl font-black text-text-primary">새 마켓 생성</h1>
+        <p className="mt-3 text-base font-semibold text-text-secondary">
+          운영자가 직접 관리하는 예측 마켓을 생성합니다.
+        </p>
+      </header>
 
-      <main className="container mx-auto px-4 py-20 max-w-3xl">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="inline-block mb-6">
-            <span className="text-white text-sm font-black bg-secondary px-8 py-3 rounded-full shadow-xl">
-              🎯 관리자
-            </span>
-          </div>
-          <h1 className="text-5xl font-black text-text-primary mb-4">
-            새 마켓 생성
-          </h1>
-          <p className="text-text-secondary text-xl font-medium">
-            사용자들이 예측할 수 있는 새로운 마켓을 만드세요
-          </p>
-        </div>
-
-        {/* Form */}
-        <CreateMarketForm />
-      </main>
+      <CreateMarketForm />
     </div>
   )
 }

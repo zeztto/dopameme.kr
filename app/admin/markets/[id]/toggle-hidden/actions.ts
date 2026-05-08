@@ -43,6 +43,8 @@ export async function toggleMarketHidden(marketId: string) {
     })
 
     // 캐시 재검증
+    revalidatePath('/admin')
+    revalidatePath('/admin/markets')
     revalidatePath(`/markets/${marketId}`)
     revalidatePath('/markets')
     revalidatePath('/app')

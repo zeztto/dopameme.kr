@@ -72,6 +72,7 @@ export async function createMarket(formData: {
           category: formData.category,
           imageUrl: formData.imageUrl || null,
           status: 'active',
+          source: 'admin',
           creatorId: userId,
           endsAt: endsAt,
         },
@@ -89,6 +90,7 @@ export async function createMarket(formData: {
     })
 
     // 캐시 재검증
+    revalidatePath('/admin')
     revalidatePath('/markets')
     revalidatePath('/admin/markets')
 

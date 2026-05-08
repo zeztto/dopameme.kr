@@ -381,7 +381,10 @@ export async function seedMockMarkets(adminId: string) {
     endsAt.setDate(endsAt.getDate() + data.daysUntilEnd)
 
     const existingMarket = await prisma.market.findFirst({
-      where: { title: data.title },
+      where: {
+        title: data.title,
+        source: 'mock',
+      },
       include: { options: true },
     })
 
@@ -414,6 +417,7 @@ export async function seedMockMarkets(adminId: string) {
         description: data.description,
         category: data.category,
         status: 'active',
+        source: 'mock',
         hidden: false,
         creatorId: adminId,
         endsAt,
