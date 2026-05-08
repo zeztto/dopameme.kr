@@ -38,6 +38,15 @@ Required values:
 - `SEED_ADMIN_NAME`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
+- `SOLANA_CLUSTER`
+- `SOLANA_RPC_URL`
+- `DPMM_MINT_ADDRESS`
+- `DPMM_TOKEN_PROGRAM`
+- `DPMM_DECIMALS`
+- `DPMM_TOKEN_NAME`
+- `DPMM_TOKEN_SYMBOL`
+- `DPMM_WALLET_LINK_DOMAIN`
+- `DPMM_EXPLORER_URL`
 - `NODE_ENV`
 - `PORT`
 - `HOSTNAME`
@@ -69,3 +78,5 @@ gh workflow run "Deploy service with Docker Compose" \
 - `migrate` runs `prisma migrate deploy` before seed/app startup.
 - `seed` creates the initial admin user, fee-burn account, and mock markets idempotently.
 - Keep `AUTH_URL` and `NEXTAUTH_URL` set to `https://dopameme.kr` in production.
+- Solana values are public token/RPC settings only. Do not place mint authority,
+  keypair, seed phrase, or private key values in the app environment.

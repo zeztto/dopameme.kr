@@ -74,6 +74,10 @@ docs/
 - **PostgreSQL** (Docker Compose)
 - **Prisma ORM**: 타입 안전 ORM 및 마이그레이션
 
+### Web3
+- **Solana devnet**: DPMM Token-2022 mint 연결
+- **Wallet signing**: nonce 기반 외부 지갑 주소 검증
+
 ### Deployment
 - **Hosting**: Vultr (`p1zza-2nd`)
 - **Runtime**: Docker Compose
@@ -134,6 +138,7 @@ dopameme.kr/
 
 ### 인증 필요 페이지
 - `/app` - 내 활동 (내 예측, 포인트 내역, 통계)
+- `/app/wallet` - Solana DPMM 지갑 연결 및 on-chain 잔액 조회
 - `/markets` - 예측 시장 목록
 - `/markets/[id]` - 예측 상세
 - `/leaderboard` - 순위표
@@ -159,6 +164,7 @@ dopameme.kr/
 - 신규 가입 시 10,000 DPMM 웰컴 보너스
 - 자동 닉네임 생성
 - 순위표
+- Solana devnet DPMM 지갑 연결 및 on-chain 잔액 조회
 
 ### 관리자 기능
 - 예측 마켓 생성
@@ -191,6 +197,11 @@ GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 SEED_ADMIN_EMAIL=admin@dopameme.kr
 SEED_ADMIN_PASSWORD=strong-admin-password
 SEED_ADMIN_NAME=dopameme-admin
+SOLANA_CLUSTER=devnet
+SOLANA_RPC_URL=https://api.devnet.solana.com
+DPMM_MINT_ADDRESS=6fQ3D623QNsskcsdwHvUNgutFp1ptbQWUAYSoLFZTeyc
+DPMM_TOKEN_PROGRAM=token-2022
+DPMM_DECIMALS=9
 ```
 
 `DATABASE_URL`에 특수문자가 포함된 비밀번호를 넣는 경우 URL percent-encoding을 적용하세요.

@@ -8,28 +8,65 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  name          String?   @unique
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          String    @default("user")
-  status        String    @default("active")
-  sessionVersion Int      @default(0) @map("session_version")
-  dpmmBalance   Int       @default(10000) @map("dpmm_balance")
-  createdAt     DateTime  @default(now()) @map("created_at")
+  id             String    @id @default(uuid())
+  name           String?   @unique
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  password       String?
+  role           String    @default("user")
+  status         String    @default("active")
+  sessionVersion Int       @default(0) @map("session_version")
+  dpmmBalance    Int       @default(10000) @map("dpmm_balance")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
-  accounts                 Account[]
-  sessions                 Session[]
-  createdMarkets           Market[]                @relation("MarketCreator")
-  predictions              Prediction[]
-  balanceAdjustments       UserBalanceAdjustment[] @relation("UserBalanceAdjustments")
-  adminBalanceAdjustments  UserBalanceAdjustment[] @relation("AdminBalanceAdjustments")
+  accounts                Account[]
+  sessions                Session[]
+  createdMarkets          Market[]                @relation("MarketCreator")
+  predictions             Prediction[]
+  balanceAdjustments      UserBalanceAdjustment[] @relation("UserBalanceAdjustments")
+  adminBalanceAdjustments UserBalanceAdjustment[] @relation("AdminBalanceAdjustments")
+  solanaWallet            SolanaWallet?
+  solanaWalletNonces      SolanaWalletNonce[]
 
   @@index([role])
   @@index([status])
   @@map("users")
+}
+
+model SolanaWallet {
+  id             String   @id @default(uuid())
+  userId         String   @unique @map("user_id")
+  address        String   @unique
+  cluster        String   @default("devnet")
+  walletProvider String?  @map("wallet_provider")
+  verifiedAt     DateTime @default(now()) @map("verified_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([cluster])
+  @@map("solana_wallets")
+}
+
+model SolanaWalletNonce {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  address    String
+  cluster    String    @default("devnet")
+  nonce      String    @unique
+  message    String    @db.Text
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([address])
+  @@index([expiresAt])
+  @@map("solana_wallet_nonces")
 }
 
 model UserBalanceAdjustment {
@@ -142,9 +179,9 @@ model Prediction {
   market Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
   option MarketOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, marketId])
   @@index([userId])
   @@index([marketId])
   @@index([optionId])
-  @@unique([userId, marketId])
   @@map("predictions")
 }

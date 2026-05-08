@@ -47,7 +47,7 @@ export default async function DashboardPage() {
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           <div className="bg-gradient-to-br from-primary/10 via-white to-white border-3 border-primary rounded-3xl p-10 text-center hover:shadow-2xl transition">
             <div className="text-5xl font-black text-primary mb-4">{dpmmBalance.toLocaleString()}</div>
-            <div className="text-text-primary font-bold text-lg">보유 DPMMM</div>
+            <div className="text-text-primary font-bold text-lg">보유 DPMM</div>
             <div className="text-text-tertiary text-sm mt-2">{dpmmBalance === 10000 ? '웰컴 보너스' : '현재 잔액'}</div>
           </div>
 
@@ -73,7 +73,7 @@ export default async function DashboardPage() {
             다양한 이슈에 대한 예측으로 DPMM을 획득하세요
           </p>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <Link
               href="/markets"
               className="bg-secondary text-white px-8 py-6 rounded-full font-black hover:bg-secondary-dark hover:shadow-2xl hover:scale-105 transition text-lg"
@@ -85,6 +85,12 @@ export default async function DashboardPage() {
               className="bg-white text-primary border-3 border-primary px-8 py-6 rounded-full font-black hover:bg-primary hover:text-white transition text-lg shadow-md"
             >
               🏆 순위표 확인하기
+            </Link>
+            <Link
+              href="/app/wallet"
+              className="bg-white text-secondary border-3 border-secondary px-8 py-6 rounded-full font-black hover:bg-secondary hover:text-white transition text-lg shadow-md"
+            >
+              DPMM 지갑 연결
             </Link>
           </div>
         </section>
@@ -120,6 +126,7 @@ export default async function DashboardPage() {
               <h4 className="text-text-primary font-black mb-6 text-lg">서비스</h4>
               <ul className="space-y-4 text-base">
                 <li><Link href="/app" className="text-text-secondary hover:text-primary transition font-semibold">내 활동</Link></li>
+                <li><Link href="/app/wallet" className="text-text-secondary hover:text-primary transition font-semibold">DPMM 지갑</Link></li>
                 <li><Link href="/markets" className="text-text-secondary hover:text-primary transition font-semibold">예측 시장</Link></li>
                 <li><Link href="/leaderboard" className="text-text-secondary hover:text-primary transition font-semibold">순위표</Link></li>
               </ul>

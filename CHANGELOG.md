@@ -15,3 +15,4 @@
 - Added an admin backoffice shell with dashboard metrics, market management, and mock-market source labeling.
 - Hardened admin market deletion rules and optimized backoffice dashboard aggregation queries.
 - Added admin member management with role/status controls, JWT session invalidation, and audited DPMM balance adjustments.
+- Added Solana devnet DPMM wallet linking and Token-2022 balance lookup.
