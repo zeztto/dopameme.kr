@@ -1,9 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
+import { prisma } from "@/lib/db"
 import Header from "@/components/Header"
 
 export default async function DashboardPage() {
@@ -14,11 +12,10 @@ export default async function DashboardPage() {
   }
 
   // 사용자 정보 조회 (DPMM 밸런스 포함)
-  const [dbUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id as string))
-    .limit(1)
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id as string },
+    select: { dpmmBalance: true },
+  })
 
   const dpmmBalance = dbUser?.dpmmBalance || 0
 

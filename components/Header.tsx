@@ -1,39 +1,17 @@
 import Link from 'next/link'
-import { auth } from '@/auth'
 import LogoutButton from './LogoutButton'
-import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
 
 type HeaderProps = {
   showBackToMarkets?: boolean
   userBalance?: number
+  isAuthenticated?: boolean
 }
 
-export default async function Header({ showBackToMarkets = false, userBalance }: HeaderProps) {
-  let session = null;
-
-  try {
-    session = await auth();
-  } catch (error) {
-    console.error('Header auth error:', error);
-  }
-
-  // 사용자 잔액 조회 (prop으로 전달되지 않은 경우)
-  let balance = userBalance;
-  if (session?.user?.id && balance === undefined) {
-    try {
-      const [dbUser] = await db
-        .select({ dpmmBalance: users.dpmmBalance })
-        .from(users)
-        .where(eq(users.id, session.user.id))
-        .limit(1);
-      balance = dbUser?.dpmmBalance || 0;
-    } catch (error) {
-      console.error('Header DB error:', error);
-      balance = 0;
-    }
-  }
+export default function Header({
+  showBackToMarkets = false,
+  userBalance,
+  isAuthenticated = userBalance !== undefined,
+}: HeaderProps) {
 
   return (
     <header className="border-b-2 border-primary/20 bg-white sticky top-0 z-50 shadow-sm">
@@ -52,17 +30,18 @@ export default async function Header({ showBackToMarkets = false, userBalance }:
                 ← 마켓 목록
               </Link>
             )}
-            {session?.user ? (
+            {isAuthenticated ? (
               <>
-                {balance !== undefined && (
+                {userBalance !== undefined && (
                   <div className="bg-primary/10 px-4 py-2 rounded-full">
                     <span className="text-primary font-black">
-                      {balance.toLocaleString()} DPMM
+                      {userBalance.toLocaleString()} DPMM
                     </span>
                   </div>
                 )}
                 <Link
                   href="/app"
+                  prefetch={false}
                   className="bg-white border-2 border-primary text-primary px-6 py-2.5 rounded-full font-bold hover:bg-primary hover:text-white transition text-sm"
                 >
                   내 활동

@@ -1,7 +1,5 @@
 import { auth } from '@/auth'
-import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { prisma } from '@/lib/db'
 
 export async function isAdmin() {
   const session = await auth()
@@ -10,11 +8,10 @@ export async function isAdmin() {
     return false
   }
 
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1)
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  })
 
   return user?.role === 'admin'
 }

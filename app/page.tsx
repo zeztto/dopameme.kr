@@ -1,56 +1,58 @@
 import Link from "next/link";
-import { auth } from "@/auth";
-import { db } from "@/lib/db";
-import { markets, marketOptions } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { prisma } from "@/lib/db";
 import Header from "@/components/Header";
 
 // auth() 사용으로 인한 동적 렌더링 명시
 export const dynamic = 'force-dynamic';
 
-export default async function LandingPage() {
-  let session = null;
-  let marketsWithOptions: any[] = [];
+type LandingMarket = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  endsAt: Date;
+  createdAt: Date;
+  options: {
+    id: string;
+    title: string;
+    totalPredictions: number;
+    totalAmount: number;
+  }[];
+  totalParticipants: number;
+};
 
-  try {
-    session = await auth();
-  } catch (error) {
-    console.error('Auth error:', error);
-  }
+export default async function LandingPage() {
+  let marketsWithOptions: LandingMarket[] = [];
 
   try {
     // 진행중인 예측 마켓 3개 가져오기
-    const activeMarkets = await db
-      .select({
-        id: markets.id,
-        title: markets.title,
-        description: markets.description,
-        category: markets.category,
-        endsAt: markets.endsAt,
-        createdAt: markets.createdAt,
-      })
-      .from(markets)
-      .where(eq(markets.status, 'active'))
-      .orderBy(desc(markets.createdAt))
-      .limit(3);
+    const activeMarkets = await prisma.market.findMany({
+      where: { status: 'active', hidden: false },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        category: true,
+        endsAt: true,
+        createdAt: true,
+        options: {
+          select: {
+            id: true,
+            title: true,
+            totalPredictions: true,
+            totalAmount: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+    });
 
     // 각 마켓의 옵션과 총 참여자 수 가져오기
-    marketsWithOptions = await Promise.all(
-      activeMarkets.map(async (market) => {
-        const options = await db
-          .select()
-          .from(marketOptions)
-          .where(eq(marketOptions.marketId, market.id));
-
-        const totalParticipants = options.reduce((sum, opt) => sum + opt.totalPredictions, 0);
-
-        return {
-          ...market,
-          options,
-          totalParticipants,
-        };
-      })
-    );
+    marketsWithOptions = activeMarkets.map((market) => ({
+      ...market,
+      totalParticipants: market.options.reduce((sum, opt) => sum + opt.totalPredictions, 0),
+    }));
   } catch (error) {
     console.error('Database error:', error);
     // DB 에러가 발생해도 페이지는 로드되도록 빈 배열 유지
@@ -91,7 +93,7 @@ export default async function LandingPage() {
 
           <div className="flex justify-center items-center pt-8">
             <Link
-              href="/app"
+              href="/signup"
               className="bg-secondary text-white px-14 py-5 rounded-full font-black hover:bg-secondary-dark hover:shadow-2xl hover:scale-105 transition-all text-lg"
             >
               지금 시작하기 →
@@ -429,7 +431,7 @@ export default async function LandingPage() {
           </p>
           <div className="flex justify-center items-center">
             <Link
-              href="/app"
+              href="/signup"
               className="inline-block bg-white text-secondary px-16 py-6 rounded-full font-black hover:shadow-2xl hover:scale-105 transition-all text-xl"
             >
               무료로 시작하기 →
@@ -458,7 +460,7 @@ export default async function LandingPage() {
             <div>
               <h4 className="text-text-primary font-black mb-6 text-lg">서비스</h4>
               <ul className="space-y-4 text-base">
-                <li><Link href="/app" className="text-text-secondary hover:text-primary transition font-semibold">내 활동</Link></li>
+                <li><Link href="/login" className="text-text-secondary hover:text-primary transition font-semibold">내 활동</Link></li>
                 <li><Link href="/markets" className="text-text-secondary hover:text-primary transition font-semibold">예측 시장</Link></li>
                 <li><Link href="/leaderboard" className="text-text-secondary hover:text-primary transition font-semibold">순위표</Link></li>
               </ul>

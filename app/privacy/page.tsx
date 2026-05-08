@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { auth } from "@/auth";
 import Header from "@/components/Header";
 
 export default async function PrivacyPage() {
-  const session = await auth();
   return (
     <div className="min-h-screen bg-white">
       <Header />

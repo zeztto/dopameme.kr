@@ -1,9 +1,15 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
-import * as schema from './schema'
+import { PrismaClient } from '@prisma/client'
 
-const connectionString = process.env.DATABASE_URL!
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient
+}
 
-// Disable prefetch as it is not supported for "Transaction" pool mode
-const client = postgres(connectionString, { prepare: false })
-export const db = drizzle(client, { schema })
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+  })
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma
+}

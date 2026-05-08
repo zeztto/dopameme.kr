@@ -1,9 +1,7 @@
 'use server'
 
 import { auth } from '@/auth'
-import { db } from '@/lib/db'
-import { markets } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth-utils'
 import { revalidatePath } from 'next/cache'
 
@@ -22,11 +20,10 @@ export async function toggleMarketHidden(marketId: string) {
     }
 
     // 마켓 존재 확인
-    const [market] = await db
-      .select()
-      .from(markets)
-      .where(eq(markets.id, marketId))
-      .limit(1)
+    const market = await prisma.market.findUnique({
+      where: { id: marketId },
+      select: { hidden: true },
+    })
 
     if (!market) {
       return {
@@ -38,12 +35,12 @@ export async function toggleMarketHidden(marketId: string) {
     // hidden 상태 토글
     const newHiddenState = !market.hidden
 
-    await db
-      .update(markets)
-      .set({
+    await prisma.market.update({
+      where: { id: marketId },
+      data: {
         hidden: newHiddenState,
-      })
-      .where(eq(markets.id, marketId))
+      },
+    })
 
     // 캐시 재검증
     revalidatePath(`/markets/${marketId}`)

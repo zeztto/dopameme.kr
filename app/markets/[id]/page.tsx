@@ -1,8 +1,6 @@
 import { auth } from "@/auth"
 import Link from "next/link"
-import { db } from "@/lib/db"
-import { markets, marketOptions, predictions, users } from "@/lib/db/schema"
-import { eq, and, desc } from "drizzle-orm"
+import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 import PredictionForm from "./PredictionForm"
 import AdminResolveMarket from "./AdminResolveMarket"
@@ -16,21 +14,17 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
   const admin = await isAdmin()
 
   // 마켓 정보 조회
-  const [market] = await db
-    .select()
-    .from(markets)
-    .where(eq(markets.id, id))
-    .limit(1)
+  const market = await prisma.market.findUnique({
+    where: { id },
+    include: { options: true },
+  })
 
-  if (!market) {
+  if (!market || (market.hidden && !admin)) {
     notFound()
   }
 
   // 마켓 옵션 조회
-  const options = await db
-    .select()
-    .from(marketOptions)
-    .where(eq(marketOptions.marketId, id))
+  const options = market.options
 
   const totalAmount = options.reduce((sum, opt) => sum + opt.totalAmount, 0)
   const totalPredictions = options.reduce((sum, opt) => sum + opt.totalPredictions, 0)
@@ -43,35 +37,47 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
 
   // 사용자 정보 조회
   let userBalance = 0
-  let userPredictions: any[] = []
+  let userPredictions: {
+    id: string
+    amount: number
+    optionId: string
+    createdAt: Date
+    optionTitle: string
+  }[] = []
 
   if (session?.user?.id) {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, session.user.id))
-      .limit(1)
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { dpmmBalance: true },
+    })
 
     userBalance = user?.dpmmBalance || 0
 
     // 사용자가 이 마켓에 참여한 예측 조회
-    userPredictions = await db
-      .select({
-        id: predictions.id,
-        amount: predictions.amount,
-        optionId: predictions.optionId,
-        createdAt: predictions.createdAt,
-        optionTitle: marketOptions.title,
-      })
-      .from(predictions)
-      .innerJoin(marketOptions, eq(predictions.optionId, marketOptions.id))
-      .where(
-        and(
-          eq(predictions.userId, session.user.id),
-          eq(predictions.marketId, id)
-        )
-      )
-      .orderBy(desc(predictions.createdAt))
+    const userPredictionRows = await prisma.prediction.findMany({
+      where: {
+        userId: session.user.id,
+        marketId: id,
+      },
+      select: {
+        id: true,
+        amount: true,
+        optionId: true,
+        createdAt: true,
+        option: {
+          select: { title: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    userPredictions = userPredictionRows.map((prediction) => ({
+      id: prediction.id,
+      amount: prediction.amount,
+      optionId: prediction.optionId,
+      createdAt: prediction.createdAt,
+      optionTitle: prediction.option.title,
+    }))
   }
 
   const hasParticipated = userPredictions.length > 0
@@ -79,11 +85,15 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
 
   // 마감 여부 확인
   const isEnded = new Date() > new Date(market.endsAt)
-  const canBet = session?.user && market.status === 'active' && !isEnded
+  const canBet = session?.user && market.status === 'active' && !isEnded && !market.hidden
 
   return (
     <div className="min-h-screen bg-white">
-      <Header showBackToMarkets={true} userBalance={session?.user ? userBalance : undefined} />
+      <Header
+        showBackToMarkets={true}
+        isAuthenticated={!!session?.user}
+        userBalance={session?.user ? userBalance : undefined}
+      />
 
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">

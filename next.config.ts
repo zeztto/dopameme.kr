@@ -1,13 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  serverExternalPackages: ['bcryptjs', 'postgres'],
+  output: 'standalone',
+  serverExternalPackages: ['bcryptjs'],
 };
 
 export default nextConfig;

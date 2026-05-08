@@ -13,7 +13,7 @@ export default async function CreateMarketPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header showBackToMarkets={true} />
+      <Header showBackToMarkets={true} isAuthenticated={true} />
 
       <main className="container mx-auto px-4 py-20 max-w-3xl">
         {/* Hero Section */}

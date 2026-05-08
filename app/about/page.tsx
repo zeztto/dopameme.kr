@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { auth } from "@/auth";
 import Header from "@/components/Header";
 
 export const metadata: Metadata = {
@@ -21,7 +20,6 @@ export const metadata: Metadata = {
 };
 
 export default async function AboutPage() {
-  const session = await auth();
   return (
     <div className="min-h-screen bg-white">
       <Header />

@@ -1,15 +1,15 @@
 import { config } from 'dotenv'
 import { resolve } from 'path'
 
-// .env.local 파일 로드 (기존 환경 변수 override)
-config({ path: resolve(process.cwd(), '.env.local'), override: true })
+// 직접 실행 시 DATABASE_URL이 없으면 로컬 개발 환경 변수를 보조로 로드합니다.
+if (!process.env.DATABASE_URL) {
+  config({ path: resolve(process.cwd(), '.env.local') })
+}
 
-import { db } from '@/lib/db'
-import { markets, marketOptions, users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { prisma } from '@/lib/db'
 
 // 예측 시장 데이터
-const marketData = [
+export const marketData = [
   // 정치 (10개)
   {
     category: '정치',
@@ -371,62 +371,97 @@ const marketData = [
   },
 ]
 
+export async function seedMockMarkets(adminId: string) {
+  let createdCount = 0
+  let existingCount = 0
+
+  for (const data of marketData) {
+    // 마감 시간 계산
+    const endsAt = new Date()
+    endsAt.setDate(endsAt.getDate() + data.daysUntilEnd)
+
+    const existingMarket = await prisma.market.findFirst({
+      where: { title: data.title },
+      include: { options: true },
+    })
+
+    if (existingMarket) {
+      const existingOptionTitles = new Set(
+        existingMarket.options.map((option) => option.title)
+      )
+
+      for (const optionTitle of data.options) {
+        if (existingOptionTitles.has(optionTitle)) continue
+
+        await prisma.marketOption.create({
+          data: {
+            marketId: existingMarket.id,
+            title: optionTitle,
+            totalPredictions: 0,
+            totalAmount: 0,
+          },
+        })
+      }
+
+      existingCount++
+      continue
+    }
+
+    // 마켓 생성
+    const market = await prisma.market.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        status: 'active',
+        hidden: false,
+        creatorId: adminId,
+        endsAt,
+      },
+    })
+
+    console.log(`생성됨: ${market.title}`)
+
+    // 옵션 생성
+    for (const optionTitle of data.options) {
+      await prisma.marketOption.create({
+        data: {
+          marketId: market.id,
+          title: optionTitle,
+          totalPredictions: 0,
+          totalAmount: 0,
+        },
+      })
+    }
+
+    createdCount++
+  }
+
+  return { createdCount, existingCount, totalCount: marketData.length }
+}
+
 async function generateMarkets() {
   try {
     console.log('예측 시장 생성 시작...')
     console.log('DATABASE_URL:', process.env.DATABASE_URL ? '설정됨' : '미설정')
 
     // Admin 계정 찾기
-    const adminUsers = await db
-      .select()
-      .from(users)
-      .where(eq(users.role, 'admin'))
-      .limit(1)
+    const adminUser = await prisma.user.findFirst({
+      where: { role: 'admin' },
+      select: { id: true },
+    })
 
-    if (adminUsers.length === 0) {
+    if (!adminUser) {
       console.error('Admin 계정을 찾을 수 없습니다.')
       process.exit(1)
     }
 
-    const adminId = adminUsers[0].id
+    const adminId = adminUser.id
     console.log(`Admin ID: ${adminId}`)
 
-    let createdCount = 0
+    const { createdCount, existingCount } = await seedMockMarkets(adminId)
 
-    for (const data of marketData) {
-      // 마감 시간 계산
-      const endsAt = new Date()
-      endsAt.setDate(endsAt.getDate() + data.daysUntilEnd)
-
-      // 마켓 생성
-      const [market] = await db
-        .insert(markets)
-        .values({
-          title: data.title,
-          description: data.description,
-          category: data.category,
-          status: 'active',
-          creatorId: adminId,
-          endsAt,
-        })
-        .returning()
-
-      console.log(`생성됨: ${market.title}`)
-
-      // 옵션 생성
-      for (const optionTitle of data.options) {
-        await db.insert(marketOptions).values({
-          marketId: market.id,
-          title: optionTitle,
-          totalPredictions: 0,
-          totalAmount: 0,
-        })
-      }
-
-      createdCount++
-    }
-
-    console.log(`\n총 ${createdCount}개의 예측 시장이 생성되었습니다.`)
+    console.log(`\n생성 ${createdCount}개, 기존 ${existingCount}개 확인 완료.`)
     process.exit(0)
   } catch (error) {
     console.error('에러 발생:', error)
@@ -434,4 +469,6 @@ async function generateMarkets() {
   }
 }
 
-generateMarkets()
+if (require.main === module) {
+  generateMarkets()
+}

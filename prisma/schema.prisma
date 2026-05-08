@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?   @unique
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("user")
+  dpmmBalance   Int       @default(10000) @map("dpmm_balance")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  accounts       Account[]
+  sessions       Session[]
+  createdMarkets Market[]     @relation("MarketCreator")
+  predictions    Prediction[]
+
+  @@map("users")
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @id
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Market {
+  id              String    @id @default(uuid())
+  title           String
+  description     String
+  category        String
+  imageUrl        String?   @map("image_url")
+  status          String    @default("active")
+  hidden          Boolean   @default(false)
+  creatorId       String    @map("creator_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  endsAt          DateTime  @map("ends_at")
+  resolvedAt      DateTime? @map("resolved_at")
+  winningOptionId String?   @map("winning_option_id")
+
+  creator     User           @relation("MarketCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  options     MarketOption[]
+  predictions Prediction[]
+
+  @@index([status])
+  @@index([hidden])
+  @@index([creatorId])
+  @@map("markets")
+}
+
+model MarketOption {
+  id               String   @id @default(uuid())
+  marketId         String   @map("market_id")
+  title            String
+  totalPredictions Int      @default(0) @map("total_predictions")
+  totalAmount      Int      @default(0) @map("total_amount")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  market      Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  predictions Prediction[]
+
+  @@index([marketId])
+  @@map("market_options")
+}
+
+model Prediction {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  marketId  String   @map("market_id")
+  optionId  String   @map("option_id")
+  amount    Int
+  createdAt DateTime @default(now()) @map("created_at")
+  resolved  Int      @default(0)
+  payout    Int      @default(0)
+
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  option MarketOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([marketId])
+  @@index([optionId])
+  @@unique([userId, marketId])
+  @@map("predictions")
+}

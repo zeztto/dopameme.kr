@@ -1,11 +1,9 @@
 'use server'
 
 import { auth } from '@/auth'
-import { db } from '@/lib/db'
-import { markets, marketOptions } from '@/lib/db/schema'
+import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth-utils'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
 export async function createMarket(formData: {
   title: string
@@ -27,6 +25,8 @@ export async function createMarket(formData: {
         error: '로그인이 필요합니다',
       }
     }
+
+    const userId = session.user.id
 
     // 유효성 검증
     if (!formData.title || formData.title.length < 5) {
@@ -62,17 +62,19 @@ export async function createMarket(formData: {
     // 트랜잭션으로 마켓과 옵션 동시 생성
     const marketId = crypto.randomUUID()
 
-    await db.transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       // 마켓 생성
-      await tx.insert(markets).values({
-        id: marketId,
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        imageUrl: formData.imageUrl || null,
-        status: 'active',
-        creatorId: session.user.id as string,
-        endsAt: endsAt,
+      await tx.market.create({
+        data: {
+          id: marketId,
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          imageUrl: formData.imageUrl || null,
+          status: 'active',
+          creatorId: userId,
+          endsAt: endsAt,
+        },
       })
 
       // 옵션 생성
@@ -81,7 +83,9 @@ export async function createMarket(formData: {
         title: optionTitle.trim(),
       }))
 
-      await tx.insert(marketOptions).values(optionsData)
+      await tx.marketOption.createMany({
+        data: optionsData,
+      })
     })
 
     // 캐시 재검증

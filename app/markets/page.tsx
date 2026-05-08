@@ -1,8 +1,6 @@
 import { auth } from "@/auth"
 import Link from "next/link"
-import { db } from "@/lib/db"
-import { markets, marketOptions } from "@/lib/db/schema"
-import { eq, desc, sql, or } from "drizzle-orm"
+import { prisma } from "@/lib/db"
 import { isAdmin } from "@/lib/auth-utils"
 import MarketList from "./market-list"
 import Header from "@/components/Header"
@@ -12,22 +10,25 @@ export default async function MarketsPage() {
   const admin = await isAdmin()
 
   // 활성 및 확정된 마켓 조회
-  const allMarketsRaw = await db
-    .select({
-      id: markets.id,
-      title: markets.title,
-      description: markets.description,
-      category: markets.category,
-      imageUrl: markets.imageUrl,
-      endsAt: markets.endsAt,
-      createdAt: markets.createdAt,
-      status: markets.status,
-      winningOptionId: markets.winningOptionId,
-      hidden: markets.hidden,
-    })
-    .from(markets)
-    .where(or(eq(markets.status, 'active'), eq(markets.status, 'resolved')))
-    .orderBy(desc(markets.createdAt))
+  const allMarketsRaw = await prisma.market.findMany({
+    where: {
+      status: { in: ['active', 'resolved'] },
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      category: true,
+      imageUrl: true,
+      endsAt: true,
+      createdAt: true,
+      status: true,
+      winningOptionId: true,
+      hidden: true,
+      options: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  })
 
   // 관리자가 아니면 hidden=false인 마켓만 필터링
   const allMarkets = admin
@@ -42,32 +43,25 @@ export default async function MarketsPage() {
   })
 
   // 각 마켓의 옵션 가져오기
-  const marketsWithOptions = await Promise.all(
-    sortedMarkets.map(async (market) => {
-      const options = await db
-        .select()
-        .from(marketOptions)
-        .where(eq(marketOptions.marketId, market.id))
+  const marketsWithOptions = sortedMarkets.map((market) => {
+    const totalAmount = market.options.reduce((sum, opt) => sum + opt.totalAmount, 0)
 
-      const totalAmount = options.reduce((sum, opt) => sum + opt.totalAmount, 0)
-
-      return {
-        ...market,
-        options: options.map(opt => ({
-          ...opt,
-          percentage: totalAmount > 0
-            ? Math.round((opt.totalAmount / totalAmount) * 100)
-            : Math.round(100 / options.length),
-          isWinner: market.status === 'resolved' && market.winningOptionId === opt.id,
-        })),
-        totalAmount,
-      }
-    })
-  )
+    return {
+      ...market,
+      options: market.options.map(opt => ({
+        ...opt,
+        percentage: totalAmount > 0
+          ? Math.round((opt.totalAmount / totalAmount) * 100)
+          : Math.round(100 / market.options.length),
+        isWinner: market.status === 'resolved' && market.winningOptionId === opt.id,
+      })),
+      totalAmount,
+    }
+  })
 
   return (
     <div className="min-h-screen bg-white">
-      <Header />
+      <Header isAuthenticated={!!session?.user} />
 
       <main className="container mx-auto px-4 py-20">
         {/* Admin Button */}

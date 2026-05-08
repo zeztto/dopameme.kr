@@ -54,7 +54,7 @@ docs/
 - 📊 **다양한 예측 시장**: 정치, 경제, 스포츠, 연예 등 다양한 분야의 이슈 예측
 - 🏆 **순위표 시스템**: 예측 실력을 증명하고 순위표 상위권 도전
 - 🔐 **안전한 인증**: NextAuth.js 기반 이메일/비밀번호 및 Google OAuth 로그인
-- 💾 **타입 안전 DB**: Drizzle ORM과 PostgreSQL 활용
+- 💾 **타입 안전 DB**: Prisma ORM과 PostgreSQL 활용
 
 ---
 
@@ -71,12 +71,14 @@ docs/
 - 이메일/비밀번호 & Google OAuth 로그인
 
 ### Database
-- **PostgreSQL** (Supabase)
-- **Drizzle ORM**: 타입 안전 ORM
-- **Drizzle Kit**: 마이그레이션 도구
+- **PostgreSQL** (Docker Compose)
+- **Prisma ORM**: 타입 안전 ORM 및 마이그레이션
 
 ### Deployment
-- **Hosting**: Vercel
+- **Hosting**: Vultr (`p1zza-2nd`)
+- **Runtime**: Docker Compose
+- **Reverse Proxy**: Caddy
+- **CI/CD**: p1zza-1st self-hosted runner
 - **Domain**: dopameme.kr
 
 ---
@@ -99,8 +101,12 @@ dopameme.kr/
 │   └── page.tsx           # 랜딩 페이지
 ├── components/            # 재사용 가능 컴포넌트
 ├── lib/                   # 유틸리티 라이브러리
+├── prisma/                # Prisma schema 및 migrations
+├── infra/caddy/           # Caddy reverse proxy 설정
 ├── scripts/               # DB 스크립트
 ├── docs/                  # 📚 프로젝트 문서
+├── Dockerfile             # Production Docker image
+├── compose.yml            # Vultr 배포용 Docker Compose
 └── ...
 ```
 
@@ -166,15 +172,26 @@ dopameme.kr/
 `.env.local` 파일을 생성하고 다음 변수를 설정하세요:
 
 ```env
-# Database (Supabase)
+# Database (PostgreSQL)
 DATABASE_URL=postgresql://...
+POSTGRES_DB=dopameme
+POSTGRES_USER=dopameme
+POSTGRES_PASSWORD=...
 
 # NextAuth
 AUTH_SECRET=your-auth-secret-key
-AUTH_GOOGLE_ID=your-google-oauth-client-id
-AUTH_GOOGLE_SECRET=your-google-oauth-client-secret
+AUTH_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+SEED_ADMIN_EMAIL=admin@dopameme.kr
+SEED_ADMIN_PASSWORD=strong-admin-password
+SEED_ADMIN_NAME=dopameme-admin
 ```
+
+`DATABASE_URL`에 특수문자가 포함된 비밀번호를 넣는 경우 URL percent-encoding을 적용하세요.
+
+Docker/Vultr 배포 절차는 [배포 문서](./docs/DEPLOYMENT.md)를 참고하세요.
 
 ---
 

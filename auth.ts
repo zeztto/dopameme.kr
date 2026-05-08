@@ -1,14 +1,14 @@
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
-import { DrizzleAdapter } from '@auth/drizzle-adapter'
-import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { PrismaAdapter } from '@auth/prisma-adapter'
+import { prisma } from '@/lib/db'
+import { checkRateLimit, getRequestIp } from '@/lib/rate-limit'
+import { isValidEmail, normalizeEmail } from '@/lib/validation'
 import bcrypt from 'bcryptjs'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: DrizzleAdapter(db),
+  adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',
@@ -27,42 +27,56 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        const email = normalizeEmail(credentials?.email)
+        const password =
+          typeof credentials?.password === 'string' ? credentials.password : ''
+
+        if (!email || !password) {
           throw new Error('이메일과 비밀번호를 입력해주세요')
         }
 
-        const user = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, credentials.email as string))
-          .limit(1)
-
-        if (!user || user.length === 0) {
-          throw new Error('존재하지 않는 사용자입니다')
+        if (!isValidEmail(email) || password.length > 128) {
+          throw new Error('이메일 또는 비밀번호가 올바르지 않습니다')
         }
 
-        const dbUser = user[0]
+        const ip = await getRequestIp()
+        const rateLimit = checkRateLimit(`login:${ip}:${email}`, {
+          limit: 10,
+          windowMs: 15 * 60 * 1000,
+        })
+
+        if (!rateLimit.allowed) {
+          throw new Error('로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요')
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { email },
+        })
+
+        if (!user) {
+          throw new Error('이메일 또는 비밀번호가 올바르지 않습니다')
+        }
 
         // 비밀번호가 없는 경우 (OAuth로 가입한 사용자)
-        if (!dbUser.password) {
-          throw new Error('다른 로그인 방법을 사용해주세요')
+        if (!user.password) {
+          throw new Error('이메일 또는 비밀번호가 올바르지 않습니다')
         }
 
         // bcrypt로 비밀번호 검증
         const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          dbUser.password
+          password,
+          user.password
         )
 
         if (!isPasswordValid) {
-          throw new Error('비밀번호가 올바르지 않습니다')
+          throw new Error('이메일 또는 비밀번호가 올바르지 않습니다')
         }
 
         return {
-          id: dbUser.id,
-          email: dbUser.email,
-          name: dbUser.name,
-          image: dbUser.image,
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
         }
       },
     }),

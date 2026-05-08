@@ -35,8 +35,8 @@ export default function SignupPage() {
     }
 
     // 비밀번호 길이 확인
-    if (password.length < 6) {
-      setError("비밀번호는 최소 6자 이상이어야 합니다")
+    if (password.length < 8) {
+      setError("비밀번호는 최소 8자 이상이어야 합니다")
       setLoading(false)
       return
     }
@@ -180,9 +180,9 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-secondary focus:outline-none text-text-primary font-medium"
-                placeholder="6자 이상"
+                placeholder="8자 이상"
               />
             </div>
 
@@ -196,7 +196,7 @@ export default function SignupPage() {
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-secondary focus:outline-none text-text-primary font-medium"
                 placeholder="비밀번호 재입력"
               />

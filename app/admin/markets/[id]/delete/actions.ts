@@ -1,12 +1,9 @@
 'use server'
 
 import { auth } from '@/auth'
-import { db } from '@/lib/db'
-import { markets } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth-utils'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
 export async function deleteMarket(marketId: string) {
   try {
@@ -23,11 +20,10 @@ export async function deleteMarket(marketId: string) {
     }
 
     // 마켓 존재 확인
-    const [market] = await db
-      .select()
-      .from(markets)
-      .where(eq(markets.id, marketId))
-      .limit(1)
+    const market = await prisma.market.findUnique({
+      where: { id: marketId },
+      select: { hidden: true },
+    })
 
     if (!market) {
       return {
@@ -45,9 +41,9 @@ export async function deleteMarket(marketId: string) {
     }
 
     // 마켓 삭제 (CASCADE로 관련 데이터도 자동 삭제됨)
-    await db
-      .delete(markets)
-      .where(eq(markets.id, marketId))
+    await prisma.market.delete({
+      where: { id: marketId },
+    })
 
     // 캐시 재검증
     revalidatePath('/markets')
