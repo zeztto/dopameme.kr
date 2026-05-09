@@ -115,6 +115,11 @@ function formatInteger(value: string | number): string {
   return Number.isFinite(parsed) ? parsed.toLocaleString('ko-KR') : String(value)
 }
 
+function formatDateTime(value: string | null): string {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('ko-KR')
+}
+
 function withdrawalStatusLabel(status: string): string {
   if (status === 'pending') return '검토 대기'
   if (status === 'approved') return '승인'
@@ -125,8 +130,108 @@ function withdrawalStatusLabel(status: string): string {
   return status
 }
 
+function withdrawalStatusDescription(status: string): string {
+  if (status === 'pending') return '운영자가 요청 금액과 지갑 주소를 검토하고 있습니다.'
+  if (status === 'approved') return '요청이 승인됐고, 운영자가 Solana 전송을 진행할 차례입니다.'
+  if (status === 'submitted') return 'on-chain transaction이 제출됐고 확정을 확인하고 있습니다.'
+  if (status === 'confirmed') return '출금이 완료됐습니다.'
+  if (status === 'rejected') return '요청이 거절됐고 차감된 장부 DPMM은 복원됩니다.'
+  if (status === 'failed') return '전송 실패로 처리됐고 차감된 장부 DPMM은 복원됩니다.'
+  return '출금 요청 상태를 확인하고 있습니다.'
+}
+
+function withdrawalStatusClass(status: string): string {
+  if (status === 'pending') return 'border-accent-yellow/30 bg-accent-yellow/10 text-accent-yellow'
+  if (status === 'approved') return 'border-primary/30 bg-primary/10 text-primary'
+  if (status === 'submitted') return 'border-accent-cyan/30 bg-accent-cyan/10 text-accent-cyan'
+  if (status === 'confirmed') return 'border-success/30 bg-success/10 text-success'
+  if (status === 'rejected' || status === 'failed') return 'border-secondary/30 bg-secondary/10 text-secondary'
+  return 'border-light-border bg-light-bg-alt text-text-secondary'
+}
+
+function buildExplorerTransactionUrl(cluster: string, signature: string): string {
+  const clusterQuery = cluster === 'mainnet-beta' ? '' : `?cluster=${cluster}`
+  return `https://explorer.solana.com/tx/${signature}${clusterQuery}`
+}
+
+function withdrawalTimelineSteps(request: WithdrawalRequest) {
+  const isRejected = request.status === 'rejected'
+  const isFailed = request.status === 'failed'
+
+  const requestedStep = {
+    label: '요청',
+    at: request.requested_at,
+    completed: true,
+    current: request.status === 'pending',
+  }
+
+  if (isRejected) {
+    return [
+      requestedStep,
+      {
+        label: '거절',
+        at: request.reviewed_at,
+        completed: Boolean(request.reviewed_at),
+        current: true,
+      },
+    ]
+  }
+
+  return [
+    requestedStep,
+    {
+      label: '승인',
+      at: request.reviewed_at,
+      completed: Boolean(request.reviewed_at),
+      current: request.status === 'approved',
+    },
+    {
+      label: '전송',
+      at: request.submitted_at,
+      completed: Boolean(request.submitted_at),
+      current: request.status === 'submitted',
+    },
+    {
+      label: isFailed ? '실패' : '확정',
+      at: isFailed ? request.failed_at : request.confirmed_at,
+      completed: Boolean(isFailed ? request.failed_at : request.confirmed_at),
+      current: request.status === 'confirmed' || isFailed,
+    },
+  ]
+}
+
 function readSignature(result: Uint8Array | { signature: Uint8Array }): Uint8Array {
   return result instanceof Uint8Array ? result : result.signature
+}
+
+function WithdrawalTimeline({ request }: { request: WithdrawalRequest }) {
+  const steps = withdrawalTimelineSteps(request)
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-4">
+      {steps.map((step) => (
+        <div
+          key={step.label}
+          className={`rounded-dopameme-md border-2 p-3 ${
+            step.completed
+              ? 'border-primary/25 bg-primary/5'
+              : step.current
+                ? 'border-accent-yellow/30 bg-accent-yellow/10'
+                : 'border-light-border bg-light-bg-alt'
+          }`}
+        >
+          <div className={`text-xs font-black ${
+            step.completed || step.current ? 'text-text-primary' : 'text-text-tertiary'
+          }`}>
+            {step.label}
+          </div>
+          <div className="mt-1 text-xs font-semibold text-text-tertiary">
+            {formatDateTime(step.at)}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export default function WalletClient() {
@@ -188,6 +293,11 @@ export default function WalletClient() {
     Number.isInteger(parsedWithdrawalAmount) &&
     parsedWithdrawalAmount >= minWithdrawalAmount &&
     parsedWithdrawalAmount <= maxWithdrawalAmount
+  const withdrawalInputHelp = !summary?.linked_wallet
+    ? '출금 받을 지갑을 먼저 연결해야 합니다.'
+    : summary.active_withdrawal
+      ? '처리 중인 출금 요청이 완료되면 새 요청을 만들 수 있습니다.'
+      : `출금 가능 범위: ${formatInteger(minWithdrawalAmount)}-${formatInteger(maxWithdrawalAmount)} DPMM`
 
   async function handleConnectAndLink() {
     const provider = getInjectedProvider()
@@ -405,56 +515,100 @@ export default function WalletClient() {
             <div>
               <p className="font-black text-text-primary">출금 요청</p>
               <p className="mt-1 text-sm font-semibold text-text-secondary">
-                최소 {formatInteger(minWithdrawalAmount)} DPMM
+                {withdrawalInputHelp}
               </p>
             </div>
             {summary?.active_withdrawal && (
-              <span className="rounded-full bg-white px-4 py-2 text-xs font-black text-secondary">
+              <span className={`rounded-full border px-4 py-2 text-xs font-black ${withdrawalStatusClass(summary.active_withdrawal.status)}`}>
                 {withdrawalStatusLabel(summary.active_withdrawal.status)}
               </span>
             )}
           </div>
 
           {summary?.active_withdrawal ? (
-            <div className="mt-5 rounded-xl bg-white p-4">
-              <div className="text-sm font-black text-text-primary">
-                {formatInteger(summary.active_withdrawal.amount)} DPMM
-              </div>
-              <div className="mt-1 text-xs font-semibold text-text-secondary">
-                {new Date(summary.active_withdrawal.requested_at).toLocaleString('ko-KR')}
-              </div>
-              {summary.active_withdrawal.tx_signature && (
-                <div className="mt-3 break-all font-mono text-xs text-text-tertiary">
-                  {summary.active_withdrawal.tx_signature}
+            <div className="mt-5 rounded-xl bg-white p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-sm font-bold text-text-tertiary">잠긴 출금액</div>
+                  <div className="mt-1 text-2xl font-black text-text-primary">
+                    {formatInteger(summary.active_withdrawal.amount)} DPMM
+                  </div>
                 </div>
+                <div className="text-left sm:text-right">
+                  <div className="text-sm font-bold text-text-tertiary">요청일</div>
+                  <div className="mt-1 text-sm font-black text-text-primary">
+                    {formatDateTime(summary.active_withdrawal.requested_at)}
+                  </div>
+                </div>
+              </div>
+
+              <p className="mt-4 rounded-dopameme-md bg-light-bg-alt p-4 text-sm font-semibold text-text-secondary">
+                {withdrawalStatusDescription(summary.active_withdrawal.status)}
+              </p>
+
+              <div className="mt-5">
+                <WithdrawalTimeline request={summary.active_withdrawal} />
+              </div>
+
+              {summary.active_withdrawal.tx_signature && (
+                <a
+                  href={buildExplorerTransactionUrl(
+                    summary.cluster,
+                    summary.active_withdrawal.tx_signature
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-5 block rounded-dopameme-md border-2 border-primary/20 bg-primary/5 p-4 transition hover:border-primary"
+                >
+                  <div className="text-xs font-black uppercase text-primary">
+                    Transaction
+                  </div>
+                  <div className="mt-1 break-all font-mono text-xs font-bold text-text-secondary">
+                    {summary.active_withdrawal.tx_signature}
+                  </div>
+                </a>
               )}
+
               {summary.active_withdrawal.user_note && (
-                <div className="mt-3 text-xs font-semibold text-text-secondary">
+                <div className="mt-4 rounded-dopameme-md border-2 border-secondary/20 bg-secondary/5 p-4 text-sm font-semibold text-text-secondary">
                   {summary.active_withdrawal.user_note}
                 </div>
               )}
             </div>
           ) : (
-            <form onSubmit={handleWithdrawalRequest} className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-              <input
-                type="number"
-                value={withdrawAmount}
-                onChange={(event) => setWithdrawAmount(event.target.value)}
-                min={minWithdrawalAmount}
-                max={maxWithdrawalAmount}
-                step={1}
-                placeholder="출금할 DPMM"
-                disabled={!summary?.linked_wallet || withdrawLoading}
-                className="min-h-12 rounded-dopameme-md border-2 border-light-border bg-white px-4 text-sm font-bold text-text-primary outline-none transition focus:border-secondary disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={!canRequestWithdrawal || withdrawLoading}
-                className="rounded-dopameme-pill bg-secondary px-6 py-3 text-sm font-black text-white transition hover:bg-secondary-dark disabled:cursor-not-allowed disabled:bg-text-tertiary"
-              >
-                {withdrawLoading ? '요청 중' : '출금 요청'}
-              </button>
-            </form>
+            <>
+              <form onSubmit={handleWithdrawalRequest} className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+                <input
+                  type="number"
+                  value={withdrawAmount}
+                  onChange={(event) => setWithdrawAmount(event.target.value)}
+                  min={minWithdrawalAmount}
+                  max={maxWithdrawalAmount}
+                  step={1}
+                  placeholder="출금할 DPMM"
+                  disabled={!summary?.linked_wallet || withdrawLoading}
+                  className="min-h-12 rounded-dopameme-md border-2 border-light-border bg-white px-4 text-sm font-bold text-text-primary outline-none transition focus:border-secondary disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={!canRequestWithdrawal || withdrawLoading}
+                  className="rounded-dopameme-pill bg-secondary px-6 py-3 text-sm font-black text-white transition hover:bg-secondary-dark disabled:cursor-not-allowed disabled:bg-text-tertiary"
+                >
+                  {withdrawLoading ? '요청 중' : '출금 요청'}
+                </button>
+              </form>
+              <div className="mt-4 grid gap-3 text-xs font-semibold text-text-secondary sm:grid-cols-3">
+                <div className="rounded-dopameme-md bg-white p-3">
+                  요청 즉시 장부 잔액에서 차감됩니다.
+                </div>
+                <div className="rounded-dopameme-md bg-white p-3">
+                  처리 중 요청은 동시에 1개만 가능합니다.
+                </div>
+                <div className="rounded-dopameme-md bg-white p-3">
+                  거절 또는 실패 시 DPMM이 복원됩니다.
+                </div>
+              </div>
+            </>
           )}
 
           {error && (
@@ -524,25 +678,58 @@ export default function WalletClient() {
         )}
 
         <div className="rounded-3xl border-3 border-light-border bg-white p-8 shadow-token-md">
-          <p className="text-sm font-black uppercase tracking-wide text-text-tertiary">
-            Withdrawal history
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase tracking-wide text-text-tertiary">
+                Withdrawal history
+              </p>
+              <p className="mt-2 text-sm font-semibold text-text-secondary">
+                최근 요청 5개
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={loadSummary}
+              disabled={state === 'loading'}
+              className="rounded-dopameme-pill border-2 border-light-border px-4 py-2 text-xs font-black text-text-secondary transition hover:border-primary hover:text-primary disabled:opacity-50"
+            >
+              새로고침
+            </button>
+          </div>
           <div className="mt-5 space-y-3">
             {summary?.withdrawals.length ? summary.withdrawals.map((request) => (
               <div key={request.id} className="rounded-2xl border-2 border-light-border p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-black text-text-primary">
-                    {formatInteger(request.amount)} DPMM
-                  </span>
-                  <span className="rounded-full bg-light-bg-alt px-3 py-1 text-xs font-black text-text-secondary">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="text-sm font-black text-text-primary">
+                      {formatInteger(request.amount)} DPMM
+                    </span>
+                    <div className="mt-2 text-xs font-semibold text-text-tertiary">
+                      {formatDateTime(request.requested_at)}
+                    </div>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-black ${withdrawalStatusClass(request.status)}`}>
                     {withdrawalStatusLabel(request.status)}
                   </span>
                 </div>
-                <div className="mt-2 text-xs font-semibold text-text-tertiary">
-                  {new Date(request.requested_at).toLocaleString('ko-KR')}
-                </div>
+
+                <p className="mt-3 text-xs font-semibold text-text-secondary">
+                  {withdrawalStatusDescription(request.status)}
+                </p>
+
+                {request.tx_signature && summary && (
+                  <a
+                    href={buildExplorerTransactionUrl(summary.cluster, request.tx_signature)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 block break-all font-mono text-xs font-bold text-primary hover:text-primary-dark"
+                  >
+                    {request.tx_signature}
+                  </a>
+                )}
+
                 {request.user_note && (
-                  <div className="mt-2 text-xs font-semibold text-text-secondary">
+                  <div className="mt-3 rounded-dopameme-md bg-light-bg-alt px-3 py-2 text-xs font-semibold text-text-secondary">
                     {request.user_note}
                   </div>
                 )}

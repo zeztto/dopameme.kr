@@ -140,7 +140,7 @@ dopameme.kr/
 
 ### 인증 필요 페이지
 - `/app` - 내 활동 (실제 예측 통계, 랭킹, 최근 예측, DPMM ledger)
-- `/app/wallet` - Solana DPMM 지갑 연결 및 on-chain 잔액 조회
+- `/app/wallet` - Solana DPMM 지갑 연결, on-chain 잔액 조회, 출금 상태 추적
 - `/markets` - 예측 시장 목록
 - `/markets/[id]` - 예측 상세
 - `/leaderboard` - 순위표

@@ -21,3 +21,4 @@
 - Added admin member detail pages with DPMM ledger, prediction, withdrawal, and balance adjustment history.
 - Added a login-protected DPMM leaderboard with Top 100 users and current-user ranking.
 - Replaced the member activity placeholder with real prediction stats, ranking, recent predictions, and DPMM ledger history.
+- Improved the DPMM withdrawal wallet UX with status guidance, processing timeline, refresh controls, and transaction links.
