@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 import PredictionForm from "./PredictionForm"
 import AdminResolveMarket from "./AdminResolveMarket"
 import ToggleHiddenButton from "./ToggleHiddenButton"
+import MarketComments from "./MarketComments"
 import { isAdmin } from "@/lib/auth-utils"
 import Header from "@/components/Header"
 
@@ -88,6 +89,40 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
 
   const hasParticipated = userPredictions.length > 0
   const totalUserBet = userPredictions.reduce((sum, p) => sum + p.amount, 0)
+  const commentWhere = {
+    marketId: id,
+    status: 'visible',
+  }
+  const [comments, commentCount] = await Promise.all([
+    prisma.marketComment.findMany({
+      where: commentWhere,
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    }),
+    prisma.marketComment.count({
+      where: commentWhere,
+    }),
+  ])
+
+  const commentItems = comments.map((comment) => ({
+    id: comment.id,
+    content: comment.content,
+    createdAt: comment.createdAt.toISOString(),
+    authorName: comment.user.name || '익명 회원',
+    authorRole: comment.user.role,
+  }))
 
   // 마감 여부 확인
   const isEnded = new Date() > new Date(market.endsAt)
@@ -463,6 +498,14 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
               </p>
             </div>
           )}
+
+          <MarketComments
+            marketId={market.id}
+            comments={commentItems}
+            commentCount={commentCount}
+            canComment={activeUser && (!market.hidden || admin)}
+            isAuthenticated={Boolean(session?.user)}
+          />
         </div>
       </main>
     </div>

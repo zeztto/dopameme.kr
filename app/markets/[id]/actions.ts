@@ -3,6 +3,7 @@
 import { auth } from '@/auth'
 import { createDpmmLedgerEntry } from '@/lib/dpmm/ledger'
 import { prisma } from '@/lib/db'
+import { checkRateLimit, getRequestIp } from '@/lib/rate-limit'
 import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
@@ -281,6 +282,107 @@ export async function placePrediction(formData: {
     return {
       success: false,
       error: '예측 참여 중 오류가 발생했습니다',
+    }
+  }
+}
+
+export async function createMarketComment(formData: {
+  marketId: string
+  content: string
+}) {
+  try {
+    const session = await auth()
+
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        error: '로그인이 필요합니다',
+      }
+    }
+
+    const marketId = typeof formData.marketId === 'string' ? formData.marketId : ''
+    const rawContent = typeof formData.content === 'string' ? formData.content : ''
+    const content = rawContent.replace(/\r\n/g, '\n').trim()
+
+    if (!marketId) {
+      return {
+        success: false,
+        error: '마켓 정보가 올바르지 않습니다',
+      }
+    }
+
+    if (!content || content.length < 2) {
+      return {
+        success: false,
+        error: '댓글은 2자 이상 입력해주세요',
+      }
+    }
+
+    if (content.length > 500) {
+      return {
+        success: false,
+        error: '댓글은 500자 이하로 입력해주세요',
+      }
+    }
+
+    const ip = await getRequestIp()
+    const rateLimit = checkRateLimit(`market-comment:${session.user.id}:${ip}:${marketId}`, {
+      limit: 8,
+      windowMs: 60 * 1000,
+    })
+
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: `댓글 작성이 너무 빠릅니다. ${rateLimit.retryAfterSeconds}초 후 다시 시도해주세요.`,
+      }
+    }
+
+    const [user, market] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { id: true, role: true, status: true },
+      }),
+      prisma.market.findUnique({
+        where: { id: marketId },
+        select: { id: true, hidden: true },
+      }),
+    ])
+
+    if (!user || user.status !== 'active') {
+      return {
+        success: false,
+        error: '이 계정은 현재 댓글을 작성할 수 없습니다',
+      }
+    }
+
+    if (!market || (market.hidden && user.role !== 'admin')) {
+      return {
+        success: false,
+        error: '댓글을 작성할 수 없는 마켓입니다',
+      }
+    }
+
+    await prisma.marketComment.create({
+      data: {
+        marketId,
+        userId: user.id,
+        content,
+      },
+    })
+
+    revalidatePath(`/markets/${marketId}`)
+
+    return {
+      success: true,
+      message: '댓글을 등록했습니다',
+    }
+  } catch (error) {
+    console.error('Market comment error:', error)
+
+    return {
+      success: false,
+      error: '댓글 등록 중 오류가 발생했습니다',
     }
   }
 }

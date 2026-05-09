@@ -24,3 +24,5 @@
 - Improved the DPMM withdrawal wallet UX with status guidance, processing timeline, refresh controls, and transaction links.
 - Added admin dashboard DPMM operations metrics for withdrawal queues, locked balances, and recent ledger activity.
 - Added a dependency-free smoke test runner for health, public pages, auth redirects, and anonymous API boundaries.
+- Added market-level comments with authenticated posting, rate limiting, and visible discussion threads.
+- Expanded smoke coverage to verify a discovered market detail page.

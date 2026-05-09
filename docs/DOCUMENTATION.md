@@ -295,7 +295,7 @@ dopameme.kr/
 #### 인증 필요 페이지 (Protected Routes)
 - `/app` - 내 활동 (내 예측, 포인트 내역, 통계)
 - `/markets` - 예측 시장 목록
-- `/markets/[id]` - 예측 상세
+- `/markets/[id]` - 예측 상세 및 마켓 토론
 - `/leaderboard` - 순위표
 
 #### 관리자 전용 페이지 (Admin Only)
@@ -713,7 +713,23 @@ const noPercent = total > 0 ? (noTotal / total) * 100 : 50
 - 한 마켓당 하나의 포지션만 가능
 - 베팅 후 취소/변경 불가 (MVP)
 
-#### 5.2.4 결과 확정 (Admin)
+#### 5.2.4 마켓 토론 댓글
+
+**파일**: `app/markets/[id]/actions.ts`
+
+**Flow**:
+1. 로그인 및 활성 계정 확인
+2. 댓글 길이 검증 (2~500자)
+3. 사용자/마켓/IP 단위 rate limit 적용
+4. 숨김 마켓은 관리자만 댓글 작성 가능
+5. `market_comments`에 visible 댓글 저장 후 마켓 상세 재검증
+
+**표시 정책**:
+- 마켓 상세에서 visible 댓글 최신 30개 표시
+- 댓글 본문은 React 렌더링 escape와 `whitespace-pre-wrap`으로 표시
+- 삭제/블라인드 등 고급 moderation은 이후 관리자 기능에서 확장
+
+#### 5.2.5 결과 확정 (Admin)
 
 **파일**: `app/admin/markets/[id]/resolve/actions.ts`
 
@@ -1391,7 +1407,7 @@ export const db = drizzle(client, {
 - ✅ 관리자 기능 (가리기, 삭제)
 
 ### Phase 2: 커뮤니티 (Q1 2025)
-- [ ] 마켓별 댓글 시스템
+- [x] 마켓별 댓글 시스템
 - [ ] 사용자 프로필 페이지
 - [ ] 팔로우/팔로워 기능
 - [ ] 활동 피드 (타임라인)

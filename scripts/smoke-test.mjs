@@ -112,6 +112,10 @@ async function readJson(response) {
   }
 }
 
+async function readText(response) {
+  return response.text()
+}
+
 const checks = [
   {
     name: 'health endpoint reports database ready',
@@ -218,6 +222,98 @@ const checks = [
     expectJson: (body) => body?.error?.code === 'auth.required',
   },
 ]
+
+async function runMarketDetailCheck(baseUrl, timeoutMs) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const startedAt = performance.now()
+
+  try {
+    const response = await fetch(buildUrl(baseUrl, '/markets'), {
+      method: 'GET',
+      redirect: 'manual',
+      signal: controller.signal,
+      headers: { accept: 'text/html' },
+    })
+
+    if (response.status !== 200 || !isHtmlResponse(response)) {
+      const durationMs = Math.round(performance.now() - startedAt)
+      return {
+        ok: false,
+        name: 'market detail page renders',
+        path: '/markets/[id]',
+        status: response.status,
+        durationMs,
+        error: `Could not discover market detail link from /markets: ${response.status}`,
+      }
+    }
+
+    const html = await readText(response)
+    const match = html.match(/href=["'](\/markets\/[^"'?#]+)["']/)
+    const detailPath = match?.[1]
+    if (!detailPath) {
+      const durationMs = Math.round(performance.now() - startedAt)
+      return {
+        ok: false,
+        name: 'market detail page renders',
+        path: '/markets/[id]',
+        status: 200,
+        durationMs,
+        error: 'Could not find a market detail link on /markets',
+      }
+    }
+
+    const detailResponse = await fetch(buildUrl(baseUrl, detailPath), {
+      method: 'GET',
+      redirect: 'manual',
+      signal: controller.signal,
+      headers: { accept: 'text/html' },
+    })
+    const durationMs = Math.round(performance.now() - startedAt)
+
+    if (detailResponse.status !== 200) {
+      return {
+        ok: false,
+        name: 'market detail page renders',
+        path: detailPath,
+        status: detailResponse.status,
+        durationMs,
+        error: `Expected status 200 but got ${detailResponse.status}`,
+      }
+    }
+
+    if (!isHtmlResponse(detailResponse)) {
+      return {
+        ok: false,
+        name: 'market detail page renders',
+        path: detailPath,
+        status: detailResponse.status,
+        durationMs,
+        error: `Expected HTML content-type but got ${detailResponse.headers.get('content-type') || '-'}`,
+      }
+    }
+
+    return {
+      ok: true,
+      name: 'market detail page renders',
+      path: detailPath,
+      status: detailResponse.status,
+      durationMs,
+    }
+  } catch (error) {
+    const durationMs = Math.round(performance.now() - startedAt)
+    return {
+      ok: false,
+      name: 'market detail page renders',
+      path: '/markets/[id]',
+      status: null,
+      durationMs,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
 async function runCheck(baseUrl, timeoutMs, check) {
   const controller = new AbortController()
@@ -332,6 +428,18 @@ async function main() {
       if (!result.ok) {
         console.log(`  ${result.error}`)
       }
+    }
+  }
+
+  const marketDetailResult = await runMarketDetailCheck(baseUrl, options.timeoutMs)
+  results.push(marketDetailResult)
+
+  if (!options.json) {
+    const marker = marketDetailResult.ok ? 'PASS' : 'FAIL'
+    const status = marketDetailResult.status === null ? '-' : marketDetailResult.status
+    console.log(`${marker} ${marketDetailResult.name} GET ${marketDetailResult.path} ${status} ${marketDetailResult.durationMs}ms`)
+    if (!marketDetailResult.ok) {
+      console.log(`  ${marketDetailResult.error}`)
     }
   }
 

@@ -145,7 +145,7 @@ dopameme.kr/
 - `/app` - 내 활동 (실제 예측 통계, 랭킹, 최근 예측, DPMM ledger)
 - `/app/wallet` - Solana DPMM 지갑 연결, on-chain 잔액 조회, 출금 상태 추적
 - `/markets` - 예측 시장 목록
-- `/markets/[id]` - 예측 상세
+- `/markets/[id]` - 예측 상세 및 마켓 토론
 - `/leaderboard` - 순위표
 
 ### 관리자 페이지
@@ -166,6 +166,7 @@ dopameme.kr/
 - DPMM 포인트로 예측 참여
 - 1% 플랫폼 수수료
 - 예측 참여, 정산, 출금, 관리자 조정을 DPMM ledger로 추적
+- 마켓별 댓글로 참여자 토론 지원
 
 ### 사용자 시스템
 - 이메일/비밀번호 또는 Google OAuth 로그인
