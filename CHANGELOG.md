@@ -20,3 +20,4 @@
 - Added append-only DPMM ledger transactions for signup, predictions, settlement, admin adjustments, and withdrawal flows.
 - Added admin member detail pages with DPMM ledger, prediction, withdrawal, and balance adjustment history.
 - Added a login-protected DPMM leaderboard with Top 100 users and current-user ranking.
+- Replaced the member activity placeholder with real prediction stats, ranking, recent predictions, and DPMM ledger history.

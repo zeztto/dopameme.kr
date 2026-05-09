@@ -139,7 +139,7 @@ dopameme.kr/
 - `/signup` - 회원가입 (10,000 DPMM 웰컴 보너스)
 
 ### 인증 필요 페이지
-- `/app` - 내 활동 (내 예측, 포인트 내역, 통계)
+- `/app` - 내 활동 (실제 예측 통계, 랭킹, 최근 예측, DPMM ledger)
 - `/app/wallet` - Solana DPMM 지갑 연결 및 on-chain 잔액 조회
 - `/markets` - 예측 시장 목록
 - `/markets/[id]` - 예측 상세
