@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -36,8 +38,74 @@ function formatDate(date: Date) {
   }).format(date)
 }
 
+function withdrawalStatusLabel(status: string) {
+  if (status === 'pending') return '검토 대기'
+  if (status === 'approved') return '승인'
+  if (status === 'submitted') return '전송됨'
+  if (status === 'confirmed') return '확정'
+  if (status === 'rejected') return '거절'
+  if (status === 'failed') return '실패'
+  return status
+}
+
+function withdrawalStatusClass(status: string) {
+  if (status === 'pending') return 'bg-accent-yellow/15 text-accent-yellow'
+  if (status === 'approved') return 'bg-primary/10 text-primary'
+  if (status === 'submitted') return 'bg-accent-cyan/10 text-accent-cyan'
+  if (status === 'confirmed') return 'bg-success/10 text-success'
+  if (status === 'rejected' || status === 'failed') return 'bg-secondary/10 text-secondary'
+  return 'bg-light-bg-alt text-text-secondary'
+}
+
+function ledgerTypeLabel(type: string) {
+  if (type === 'opening_balance') return '초기 잔액'
+  if (type === 'welcome_bonus') return '웰컴 보너스'
+  if (type === 'admin_adjustment') return '관리자 조정'
+  if (type === 'prediction_stake') return '예측 참여'
+  if (type === 'market_payout') return '정산 보상'
+  if (type === 'market_fee') return '정산 수수료'
+  if (type === 'withdrawal_request') return '출금 요청'
+  if (type === 'withdrawal_refund') return '출금 복원'
+  return type
+}
+
+function DeltaText({ delta }: { delta: number }) {
+  return (
+    <span className={delta >= 0 ? 'text-success' : 'text-secondary'}>
+      {delta > 0 ? '+' : ''}{delta.toLocaleString()}
+    </span>
+  )
+}
+
+async function requireDashboardAdmin() {
+  const session = await auth()
+
+  if (!session?.user?.id) {
+    redirect('/login')
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      role: true,
+      status: true,
+    },
+  })
+
+  if (user?.status !== 'active') {
+    redirect('/login')
+  }
+
+  if (user.role !== 'admin') {
+    redirect('/markets')
+  }
+}
+
 export default async function AdminDashboardPage() {
+  await requireDashboardAdmin()
+
   const now = new Date()
+  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
   const [
     totalMarkets,
@@ -55,6 +123,14 @@ export default async function AdminDashboardPage() {
     categoryCounts,
     categoryActiveCounts,
     categoryMockCounts,
+    withdrawalStatusCounts,
+    activeWithdrawalAmount,
+    recentWithdrawalQueue,
+    ledgerCount,
+    ledger24hCount,
+    ledgerCredits,
+    ledgerDebits,
+    recentLedger,
   ] =
     await Promise.all([
       prisma.market.count(),
@@ -105,6 +181,66 @@ export default async function AdminDashboardPage() {
         where: { source: 'mock' },
         _count: { _all: true },
       }),
+      prisma.solanaWithdrawalRequest.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      prisma.solanaWithdrawalRequest.aggregate({
+        where: { status: { in: ['pending', 'approved', 'submitted'] } },
+        _sum: { amount: true },
+      }),
+      prisma.solanaWithdrawalRequest.findMany({
+        where: { status: { in: ['pending', 'approved', 'submitted'] } },
+        take: 5,
+        orderBy: { requestedAt: 'asc' },
+        select: {
+          id: true,
+          amount: true,
+          status: true,
+          requestedAt: true,
+          walletAddress: true,
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      }),
+      prisma.dpmmLedgerTransaction.count(),
+      prisma.dpmmLedgerTransaction.count({ where: { createdAt: { gte: dayAgo } } }),
+      prisma.dpmmLedgerTransaction.aggregate({
+        where: { delta: { gt: 0 } },
+        _sum: { delta: true },
+      }),
+      prisma.dpmmLedgerTransaction.aggregate({
+        where: { delta: { lt: 0 } },
+        _sum: { delta: true },
+      }),
+      prisma.dpmmLedgerTransaction.findMany({
+        take: 6,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          type: true,
+          delta: true,
+          balanceAfter: true,
+          reason: true,
+          createdAt: true,
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+          actor: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      }),
     ])
 
   const categoryActiveMap = new Map(
@@ -121,6 +257,18 @@ export default async function AdminDashboardPage() {
       mock: categoryMockMap.get(item.category) || 0,
     }))
     .sort((a, b) => b.count - a.count)
+  const withdrawalStatusMap = new Map(
+    withdrawalStatusCounts.map((item) => [item.status, item._count._all])
+  )
+  const pendingWithdrawalCount = withdrawalStatusMap.get('pending') || 0
+  const approvedWithdrawalCount = withdrawalStatusMap.get('approved') || 0
+  const submittedWithdrawalCount = withdrawalStatusMap.get('submitted') || 0
+  const confirmedWithdrawalCount = withdrawalStatusMap.get('confirmed') || 0
+  const activeWithdrawalCount =
+    pendingWithdrawalCount + approvedWithdrawalCount + submittedWithdrawalCount
+  const totalLedgerCredits = ledgerCredits._sum.delta || 0
+  const totalLedgerDebits = Math.abs(ledgerDebits._sum.delta || 0)
+  const ledgerNet = totalLedgerCredits - totalLedgerDebits
 
   return (
     <div className="space-y-8">
@@ -145,6 +293,32 @@ export default async function AdminDashboardPage() {
         <StatCard label="목업 마켓" value={mockMarkets.toLocaleString()} helper="seed 데이터 표시" tone="secondary" />
         <StatCard label="참여 건수" value={predictionCount.toLocaleString()} helper={`${(predictionVolume._sum.amount || 0).toLocaleString()} DPMM 누적`} tone="success" />
         <StatCard label="사용자" value={userCount.toLocaleString()} helper={`${adminCount}명 관리자`} />
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="출금 처리중"
+          value={activeWithdrawalCount.toLocaleString()}
+          helper={`${pendingWithdrawalCount}건 검토 · ${approvedWithdrawalCount}건 승인`}
+          tone="secondary"
+        />
+        <StatCard
+          label="잠긴 DPMM"
+          value={(activeWithdrawalAmount._sum.amount || 0).toLocaleString()}
+          helper={`${submittedWithdrawalCount}건 전송 · ${confirmedWithdrawalCount}건 확정`}
+          tone="primary"
+        />
+        <StatCard
+          label="Ledger 거래"
+          value={ledgerCount.toLocaleString()}
+          helper={`최근 24시간 ${ledger24hCount.toLocaleString()}건`}
+          tone="success"
+        />
+        <StatCard
+          label="Ledger 순증감"
+          value={ledgerNet.toLocaleString()}
+          helper={`유입 ${totalLedgerCredits.toLocaleString()} · 사용 ${totalLedgerDebits.toLocaleString()}`}
+        />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
@@ -249,6 +423,112 @@ export default async function AdminDashboardPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="overflow-hidden rounded-dopameme-lg border-3 border-light-border bg-white shadow-token-sm">
+          <div className="flex items-center justify-between border-b-2 border-light-border px-5 py-4">
+            <div>
+              <h2 className="text-lg font-black text-text-primary">출금 운영 큐</h2>
+              <p className="mt-1 text-sm font-semibold text-text-tertiary">
+                오래된 처리중 요청 5건
+              </p>
+            </div>
+            <Link href="/admin/withdrawals" className="text-sm font-black text-primary hover:text-primary-dark">
+              전체 보기
+            </Link>
+          </div>
+          <div className="divide-y-2 divide-light-border">
+            {recentWithdrawalQueue.length ? recentWithdrawalQueue.map((request) => (
+              <Link
+                key={request.id}
+                href="/admin/withdrawals"
+                className="block px-5 py-4 transition hover:bg-primary/5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-base font-black text-text-primary">
+                      {request.amount.toLocaleString()} DPMM
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-text-secondary">
+                      {request.user.name || request.user.email || '회원'}
+                    </div>
+                    <div className="mt-2 break-all font-mono text-xs text-text-tertiary">
+                      {request.walletAddress}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className={`rounded-dopameme-pill px-3 py-1 text-xs font-black ${withdrawalStatusClass(request.status)}`}>
+                      {withdrawalStatusLabel(request.status)}
+                    </span>
+                    <div className="mt-2 text-xs font-bold text-text-tertiary">
+                      {formatDate(request.requestedAt)}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            )) : (
+              <div className="px-5 py-12 text-center text-sm font-semibold text-text-secondary">
+                처리 중인 출금 요청이 없습니다.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-dopameme-lg border-3 border-light-border bg-white shadow-token-sm">
+          <div className="flex items-center justify-between border-b-2 border-light-border px-5 py-4">
+            <div>
+              <h2 className="text-lg font-black text-text-primary">최근 DPMM Ledger</h2>
+              <p className="mt-1 text-sm font-semibold text-text-tertiary">
+                최신 장부 거래 6건
+              </p>
+            </div>
+            <Link href="/admin/users" className="text-sm font-black text-primary hover:text-primary-dark">
+              회원 관리
+            </Link>
+          </div>
+          <div className="divide-y-2 divide-light-border">
+            {recentLedger.length ? recentLedger.map((entry) => (
+              <div key={entry.id} className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_auto]">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-dopameme-pill bg-light-bg-alt px-3 py-1 text-xs font-black text-text-secondary">
+                      {ledgerTypeLabel(entry.type)}
+                    </span>
+                    <span className="text-xs font-bold text-text-tertiary">
+                      {formatDate(entry.createdAt)}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-sm font-black text-text-primary">
+                    {entry.user.name || entry.user.email || '회원'}
+                  </div>
+                  {entry.reason && (
+                    <div className="mt-1 line-clamp-2 text-xs font-semibold text-text-secondary">
+                      {entry.reason}
+                    </div>
+                  )}
+                  {entry.actor && (
+                    <div className="mt-1 text-xs font-semibold text-text-tertiary">
+                      actor {entry.actor.name || entry.actor.email || '관리자'}
+                    </div>
+                  )}
+                </div>
+                <div className="text-left md:text-right">
+                  <div className="text-base font-black">
+                    <DeltaText delta={entry.delta} />
+                  </div>
+                  <div className="mt-1 text-xs font-bold text-text-tertiary">
+                    잔액 {entry.balanceAfter.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <div className="px-5 py-12 text-center text-sm font-semibold text-text-secondary">
+                ledger 기록이 없습니다.
+              </div>
+            )}
           </div>
         </div>
       </section>

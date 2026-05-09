@@ -146,7 +146,7 @@ dopameme.kr/
 - `/leaderboard` - 순위표
 
 ### 관리자 페이지
-- `/admin` - 운영 대시보드
+- `/admin` - 운영 대시보드 (마켓, 출금 큐, DPMM ledger 지표)
 - `/admin/markets` - 마켓 관리
 - `/admin/markets/create` - 마켓 생성
 - `/admin/users` - 회원 관리
@@ -178,6 +178,7 @@ dopameme.kr/
 - 마켓 가리기/삭제
 - 회원 권한/상태 관리
 - 회원 DPMM 잔액 조정 및 상세 ledger 이력 조회
+- 출금 처리 큐와 DPMM ledger 운영 지표 모니터링
 - DPMM 출금 요청 승인/거절 및 transaction signature 기록
 
 ---
