@@ -182,6 +182,14 @@ const checks = [
     expectLocation: '/login',
   },
   {
+    name: 'user profile requires login',
+    method: 'GET',
+    path: '/users/smoke-test-user',
+    redirect: 'manual',
+    expectStatus: [302, 303, 307, 308],
+    expectLocation: '/login',
+  },
+  {
     name: 'admin dashboard requires login',
     method: 'GET',
     path: '/admin',

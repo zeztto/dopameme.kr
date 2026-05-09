@@ -100,6 +100,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
         id: true,
         content: true,
         createdAt: true,
+        userId: true,
         user: {
           select: {
             name: true,
@@ -120,6 +121,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
     id: comment.id,
     content: comment.content,
     createdAt: comment.createdAt.toISOString(),
+    authorId: activeUser ? comment.userId : null,
     authorName: comment.user.name || '익명 회원',
     authorRole: comment.user.role,
   }))

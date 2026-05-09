@@ -146,6 +146,7 @@ dopameme.kr/
 - `/app/wallet` - Solana DPMM 지갑 연결, on-chain 잔액 조회, 출금 상태 추적
 - `/markets` - 예측 시장 목록
 - `/markets/[id]` - 예측 상세 및 마켓 토론
+- `/users/[id]` - 사용자 프로필
 - `/leaderboard` - 순위표
 
 ### 관리자 페이지
@@ -172,6 +173,7 @@ dopameme.kr/
 - 이메일/비밀번호 또는 Google OAuth 로그인
 - 신규 가입 시 10,000 DPMM 웰컴 보너스
 - 자동 닉네임 생성
+- 사용자 프로필
 - 순위표
 - Solana devnet DPMM 지갑 연결 및 on-chain 잔액 조회
 - 장부 DPMM 출금 요청

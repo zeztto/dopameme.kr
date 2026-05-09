@@ -2,11 +2,19 @@ import { auth } from '@/auth'
 import Header from '@/components/Header'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
 function formatDate(date: Date) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(date)
+}
+
+function formatShortDate(date: Date) {
   return new Intl.DateTimeFormat('ko-KR', {
     month: 'short',
     day: 'numeric',
@@ -15,21 +23,16 @@ function formatDate(date: Date) {
   }).format(date)
 }
 
-function ledgerTypeLabel(type: string) {
-  if (type === 'opening_balance') return '초기 잔액'
-  if (type === 'welcome_bonus') return '웰컴 보너스'
-  if (type === 'admin_adjustment') return '관리자 조정'
-  if (type === 'prediction_stake') return '예측 참여'
-  if (type === 'market_payout') return '정산 보상'
-  if (type === 'market_fee') return '정산 수수료'
-  if (type === 'withdrawal_request') return '출금 요청'
-  if (type === 'withdrawal_refund') return '출금 복원'
-  return type
+function roleLabel(role: string) {
+  if (role === 'admin') return '관리자'
+  if (role === 'test') return '테스트'
+  return '회원'
 }
 
-function userLedgerReason(type: string, reason: string | null) {
-  if (!reason || type === 'admin_adjustment') return null
-  return reason
+function roleClass(role: string) {
+  if (role === 'admin') return 'border-primary/20 bg-primary/10 text-primary'
+  if (role === 'test') return 'border-accent-yellow/20 bg-accent-yellow/10 text-accent-yellow'
+  return 'border-light-border bg-light-bg-alt text-text-tertiary'
 }
 
 function predictionStatusLabel(prediction: {
@@ -84,27 +87,42 @@ function StatCard({
   )
 }
 
-export default async function DashboardPage() {
+export default async function UserProfilePage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
   const session = await auth()
 
   if (!session?.user?.id) {
     redirect('/login')
   }
 
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      name: true,
-      status: true,
-      role: true,
-      dpmmBalance: true,
-      createdAt: true,
-    },
-  })
+  const [profileUser, currentUser] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        status: true,
+        dpmmBalance: true,
+        createdAt: true,
+      },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { dpmmBalance: true, status: true },
+    }),
+  ])
 
   if (!currentUser || currentUser.status !== 'active') {
     redirect('/login')
+  }
+
+  if (!profileUser || profileUser.status !== 'active' || profileUser.role === 'system') {
+    notFound()
   }
 
   const leaderboardWhere = {
@@ -113,36 +131,70 @@ export default async function DashboardPage() {
   }
 
   const [
-    activePredictionCount,
     totalPredictionCount,
+    activePredictionCount,
     winCount,
     lossCount,
     predictionVolume,
     payoutTotal,
+    commentCount,
     recentPredictions,
-    recentLedger,
+    recentComments,
     totalUsers,
     higherRankedUsers,
   ] = await Promise.all([
     prisma.prediction.count({
       where: {
-        userId: currentUser.id,
-        market: { status: 'active' },
+        userId: profileUser.id,
+        market: { hidden: false },
       },
     }),
-    prisma.prediction.count({ where: { userId: currentUser.id } }),
-    prisma.prediction.count({ where: { userId: currentUser.id, resolved: 1 } }),
-    prisma.prediction.count({ where: { userId: currentUser.id, resolved: -1 } }),
+    prisma.prediction.count({
+      where: {
+        userId: profileUser.id,
+        market: { status: 'active', hidden: false },
+      },
+    }),
+    prisma.prediction.count({
+      where: {
+        userId: profileUser.id,
+        resolved: 1,
+        market: { hidden: false },
+      },
+    }),
+    prisma.prediction.count({
+      where: {
+        userId: profileUser.id,
+        resolved: -1,
+        market: { hidden: false },
+      },
+    }),
     prisma.prediction.aggregate({
-      where: { userId: currentUser.id },
+      where: {
+        userId: profileUser.id,
+        market: { hidden: false },
+      },
       _sum: { amount: true },
     }),
     prisma.prediction.aggregate({
-      where: { userId: currentUser.id },
+      where: {
+        userId: profileUser.id,
+        market: { hidden: false },
+      },
       _sum: { payout: true },
     }),
+    prisma.marketComment.count({
+      where: {
+        userId: profileUser.id,
+        status: 'visible',
+        market: { hidden: false },
+      },
+    }),
     prisma.prediction.findMany({
-      where: { userId: currentUser.id },
+      where: {
+        userId: profileUser.id,
+        market: { hidden: false },
+      },
       take: 8,
       orderBy: { createdAt: 'desc' },
       select: {
@@ -166,17 +218,24 @@ export default async function DashboardPage() {
         },
       },
     }),
-    prisma.dpmmLedgerTransaction.findMany({
-      where: { userId: currentUser.id },
-      take: 10,
+    prisma.marketComment.findMany({
+      where: {
+        userId: profileUser.id,
+        status: 'visible',
+        market: { hidden: false },
+      },
+      take: 6,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
-        type: true,
-        delta: true,
-        balanceAfter: true,
-        reason: true,
+        content: true,
         createdAt: true,
+        market: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
       },
     }),
     prisma.user.count({ where: leaderboardWhere }),
@@ -184,71 +243,92 @@ export default async function DashboardPage() {
       where: {
         ...leaderboardWhere,
         OR: [
-          { dpmmBalance: { gt: currentUser.dpmmBalance } },
+          { dpmmBalance: { gt: profileUser.dpmmBalance } },
           {
-            dpmmBalance: currentUser.dpmmBalance,
-            createdAt: { lt: currentUser.createdAt },
+            dpmmBalance: profileUser.dpmmBalance,
+            createdAt: { lt: profileUser.createdAt },
           },
           {
-            dpmmBalance: currentUser.dpmmBalance,
-            createdAt: currentUser.createdAt,
-            id: { lt: currentUser.id },
+            dpmmBalance: profileUser.dpmmBalance,
+            createdAt: profileUser.createdAt,
+            id: { lt: profileUser.id },
           },
         ],
       },
     }),
   ])
 
-  const myRank = higherRankedUsers + 1
+  const displayName = profileUser.name || '도파밈 유저'
+  const rank = higherRankedUsers + 1
   const winRate = winCount + lossCount > 0
     ? Math.round((winCount / (winCount + lossCount)) * 100)
     : 0
   const totalStaked = predictionVolume._sum.amount || 0
   const totalPayout = payoutTotal._sum.payout || 0
   const netPredictionResult = totalPayout - totalStaked
-
   return (
     <div className="min-h-screen bg-white">
-      <Header userBalance={currentUser.dpmmBalance} />
+      <Header
+        isAuthenticated={true}
+        userBalance={currentUser.dpmmBalance}
+      />
 
       <main className="container mx-auto px-4 py-20">
-        <section className="mb-12 text-center">
-          <div className="mb-6 inline-block">
-            <span className="rounded-dopameme-pill bg-primary px-8 py-3 text-sm font-black text-white shadow-token-brand">
-              내 활동
-            </span>
+        <section className="mb-12 rounded-dopameme-xl border-3 border-primary/20 bg-primary/5 p-8 shadow-token-sm">
+          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div>
+              <div className="mb-5 flex flex-wrap items-center gap-3">
+                <span className={`rounded-dopameme-pill border px-4 py-2 text-sm font-black ${roleClass(profileUser.role)}`}>
+                  {roleLabel(profileUser.role)}
+                </span>
+                <span className="rounded-dopameme-pill border border-light-border bg-white px-4 py-2 text-sm font-black text-text-tertiary">
+                  가입 {formatDate(profileUser.createdAt)}
+                </span>
+              </div>
+
+              <h1 className="text-5xl font-black text-text-primary">
+                {displayName}
+              </h1>
+              <p className="mt-4 max-w-2xl text-lg font-semibold text-text-secondary">
+                예측 참여, 랭킹, 공개 댓글 활동을 확인할 수 있는 사용자 프로필입니다.
+              </p>
+            </div>
+
+            <div className="rounded-dopameme-lg border-3 border-primary bg-white p-6 text-left shadow-token-brand lg:min-w-72">
+              <div className="text-sm font-black text-text-tertiary">현재 랭킹</div>
+              <div className="mt-3 text-4xl font-black text-primary">
+                {rank.toLocaleString()}위
+              </div>
+              <div className="mt-2 text-sm font-bold text-text-secondary">
+                전체 {totalUsers.toLocaleString()}명 중
+              </div>
+            </div>
           </div>
-          <h1 className="mb-4 text-5xl font-black text-text-primary">
-            {currentUser.name || '도파밈 유저'}님의 활동 현황
-          </h1>
-          <p className="text-xl font-medium text-text-secondary">
-            예측 참여, DPMM 흐름, 랭킹을 한 화면에서 확인합니다
-          </p>
         </section>
 
         <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="보유 DPMM"
-            value={currentUser.dpmmBalance.toLocaleString()}
-            helper={currentUser.dpmmBalance === 10000 ? '웰컴 보너스 기준' : '장부 기준 현재 잔액'}
+            value={profileUser.dpmmBalance.toLocaleString()}
+            helper="장부 기준 공개 잔액"
             tone="primary"
           />
           <StatCard
-            label="참여 중인 예측"
-            value={activePredictionCount.toLocaleString()}
-            helper={`${totalPredictionCount.toLocaleString()}개 전체 참여`}
+            label="전체 예측"
+            value={totalPredictionCount.toLocaleString()}
+            helper={`${activePredictionCount.toLocaleString()}개 진행 중`}
             tone="success"
-          />
-          <StatCard
-            label="내 랭킹"
-            value={`${myRank.toLocaleString()}위`}
-            helper={`전체 ${totalUsers.toLocaleString()}명 중`}
-            tone="secondary"
           />
           <StatCard
             label="승률"
             value={`${winRate}%`}
             helper={`${winCount.toLocaleString()}승 ${lossCount.toLocaleString()}패`}
+            tone="secondary"
+          />
+          <StatCard
+            label="댓글"
+            value={commentCount.toLocaleString()}
+            helper="공개 마켓 토론 기준"
           />
         </section>
 
@@ -276,52 +356,13 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="mb-12 rounded-dopameme-xl border-3 border-primary/30 bg-primary/5 p-8 shadow-token-sm">
-          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <h2 className="text-3xl font-black text-text-primary">
-                다음 행동
-              </h2>
-              <p className="mt-3 text-base font-semibold text-text-secondary">
-                새 마켓에 참여하거나, 출금 지갑과 전체 순위를 확인할 수 있습니다.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/markets"
-                className="rounded-dopameme-pill bg-secondary px-6 py-3 text-center text-sm font-black text-white shadow-token-md transition hover:bg-secondary-dark"
-              >
-                예측 시장
-              </Link>
-              <Link
-                href={`/users/${currentUser.id}`}
-                className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
-              >
-                프로필
-              </Link>
-              <Link
-                href="/leaderboard"
-                className="rounded-dopameme-pill border-3 border-secondary bg-white px-6 py-3 text-center text-sm font-black text-secondary transition hover:bg-secondary hover:text-white"
-              >
-                순위표
-              </Link>
-              <Link
-                href="/app/wallet"
-                className="rounded-dopameme-pill border-3 border-light-border bg-white px-6 py-3 text-center text-sm font-black text-text-secondary transition hover:border-primary hover:text-primary"
-              >
-                출금 지갑
-              </Link>
-            </div>
-          </div>
-        </section>
-
         <section className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="overflow-hidden rounded-dopameme-xl border-3 border-light-border bg-white shadow-token-md">
             <div className="flex flex-col gap-3 border-b-3 border-light-border bg-light-bg-alt px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-black text-text-primary">최근 예측</h2>
                 <p className="mt-1 text-sm font-semibold text-text-tertiary">
-                  최근 8개 참여 내역
+                  공개 마켓 기준 최근 8개 참여
                 </p>
               </div>
               <Link href="/markets" className="text-sm font-black text-primary hover:text-primary-dark">
@@ -332,10 +373,10 @@ export default async function DashboardPage() {
             {recentPredictions.length === 0 ? (
               <div className="px-5 py-16 text-center">
                 <h3 className="text-2xl font-black text-text-primary">
-                  아직 참여한 예측이 없습니다
+                  공개 예측 기록이 없습니다
                 </h3>
                 <p className="mt-3 text-base font-semibold text-text-secondary">
-                  예측 시장에서 첫 포지션을 만들어보세요.
+                  공개 마켓에 참여하면 이곳에 표시됩니다.
                 </p>
               </div>
             ) : (
@@ -354,7 +395,7 @@ export default async function DashboardPage() {
                           {predictionStatusLabel(prediction)}
                         </span>
                         <span className="text-xs font-bold text-text-tertiary">
-                          {formatDate(prediction.createdAt)}
+                          {formatShortDate(prediction.createdAt)}
                         </span>
                       </div>
                       <h3 className="mt-2 line-clamp-2 text-base font-black text-text-primary">
@@ -386,98 +427,40 @@ export default async function DashboardPage() {
 
           <div className="overflow-hidden rounded-dopameme-xl border-3 border-light-border bg-white shadow-token-md">
             <div className="border-b-3 border-light-border bg-light-bg-alt px-5 py-4">
-              <h2 className="text-xl font-black text-text-primary">최근 DPMM Ledger</h2>
+              <h2 className="text-xl font-black text-text-primary">최근 댓글</h2>
               <p className="mt-1 text-sm font-semibold text-text-tertiary">
-                최근 10개 잔액 변동
+                공개 마켓 토론 기준 최근 6개
               </p>
             </div>
 
-            {recentLedger.length === 0 ? (
+            {recentComments.length === 0 ? (
               <div className="px-5 py-16 text-center text-sm font-semibold text-text-secondary">
-                DPMM ledger 기록이 없습니다.
+                공개 댓글 기록이 없습니다.
               </div>
             ) : (
               <div className="divide-y-2 divide-light-border">
-                {recentLedger.map((entry) => {
-                  const visibleReason = userLedgerReason(entry.type, entry.reason)
-
-                  return (
-                    <div key={entry.id} className="px-5 py-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="text-sm font-black text-text-primary">
-                            {ledgerTypeLabel(entry.type)}
-                          </div>
-                          <div className="mt-1 text-xs font-bold text-text-tertiary">
-                            {formatDate(entry.createdAt)}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-black">
-                            <DeltaText delta={entry.delta} />
-                          </div>
-                          <div className="mt-1 text-xs font-bold text-text-tertiary">
-                            잔액 {entry.balanceAfter.toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                      {visibleReason && (
-                        <div className="mt-3 rounded-dopameme-md bg-light-bg-alt px-3 py-2 text-xs font-semibold text-text-secondary">
-                          {visibleReason}
-                        </div>
-                      )}
+                {recentComments.map((comment) => (
+                  <Link
+                    key={comment.id}
+                    href={`/markets/${comment.market.id}`}
+                    className="block px-5 py-4 transition hover:bg-primary/5"
+                  >
+                    <div className="text-xs font-bold text-text-tertiary">
+                      {formatShortDate(comment.createdAt)}
                     </div>
-                  )
-                })}
+                    <h3 className="mt-2 line-clamp-2 text-sm font-black text-text-primary">
+                      {comment.market.title}
+                    </h3>
+                    <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-text-secondary">
+                      {comment.content}
+                    </p>
+                  </Link>
+                ))}
               </div>
             )}
           </div>
         </section>
       </main>
-
-      <footer className="mt-40 border-t-2 border-light-border bg-light-bg-alt">
-        <div className="container mx-auto px-4 py-12">
-          <div className="mb-12 grid gap-16 md:grid-cols-3">
-            <div>
-              <div className="mb-6 flex items-center gap-2">
-                <span className="text-3xl font-black">
-                  <span className="text-primary">도</span>
-                  <span className="text-secondary">파</span>
-                  <span className="text-primary">밈</span>
-                </span>
-              </div>
-              <p className="text-base font-medium leading-relaxed text-text-secondary">
-                게임처럼 즐기는 예측 플랫폼
-              </p>
-            </div>
-
-            <div>
-              <h4 className="mb-6 text-lg font-black text-text-primary">서비스</h4>
-              <ul className="space-y-4 text-base">
-                <li><Link href="/app" className="font-semibold text-text-secondary transition hover:text-primary">내 활동</Link></li>
-                <li><Link href="/app/wallet" className="font-semibold text-text-secondary transition hover:text-primary">DPMM 출금 지갑</Link></li>
-                <li><Link href="/markets" className="font-semibold text-text-secondary transition hover:text-primary">예측 시장</Link></li>
-                <li><Link href="/leaderboard" className="font-semibold text-text-secondary transition hover:text-primary">순위표</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="mb-6 text-lg font-black text-text-primary">정보</h4>
-              <ul className="space-y-4 text-base">
-                <li><Link href="/about" className="font-semibold text-text-secondary transition hover:text-primary">도파밈 소개</Link></li>
-                <li><Link href="/terms" className="font-semibold text-text-secondary transition hover:text-primary">이용약관</Link></li>
-                <li><Link href="/privacy" className="font-semibold text-text-secondary transition hover:text-primary">개인정보처리방침</Link></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t-2 border-light-border pt-8 text-center">
-            <p className="text-base font-semibold text-text-secondary">
-              © 2025 도파밈. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

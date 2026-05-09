@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createMarketComment } from './actions'
@@ -8,6 +9,7 @@ type MarketComment = {
   id: string
   content: string
   createdAt: string
+  authorId: string | null
   authorName: string
   authorRole: string
 }
@@ -32,6 +34,38 @@ function formatCommentDate(value: string) {
 function roleLabel(role: string) {
   if (role === 'admin') return '관리자'
   return '회원'
+}
+
+function CommentAuthor({ comment }: { comment: MarketComment }) {
+  const content = (
+    <>
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-black text-primary">
+        {comment.authorName.slice(0, 1).toUpperCase()}
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm font-black text-text-primary">
+          {comment.authorName}
+        </div>
+        <div className="text-xs font-bold text-text-tertiary">
+          {roleLabel(comment.authorRole)}
+        </div>
+      </div>
+    </>
+  )
+
+  if (!comment.authorId) {
+    return (
+      <div className="flex min-w-0 items-center gap-2">
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <Link href={`/users/${comment.authorId}`} className="flex min-w-0 items-center gap-2 transition hover:text-primary">
+      {content}
+    </Link>
+  )
 }
 
 export default function MarketComments({
@@ -154,19 +188,7 @@ export default function MarketComments({
             className="rounded-dopameme-lg border-2 border-light-border bg-white p-5"
           >
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-black text-primary">
-                  {comment.authorName.slice(0, 1).toUpperCase()}
-                </div>
-                <div>
-                  <div className="text-sm font-black text-text-primary">
-                    {comment.authorName}
-                  </div>
-                  <div className="text-xs font-bold text-text-tertiary">
-                    {roleLabel(comment.authorRole)}
-                  </div>
-                </div>
-              </div>
+              <CommentAuthor comment={comment} />
               <time className="text-xs font-bold text-text-tertiary" dateTime={comment.createdAt}>
                 {formatCommentDate(comment.createdAt)}
               </time>

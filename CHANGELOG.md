@@ -26,3 +26,5 @@
 - Added a dependency-free smoke test runner for health, public pages, auth redirects, and anonymous API boundaries.
 - Added market-level comments with authenticated posting, rate limiting, and visible discussion threads.
 - Expanded smoke coverage to verify a discovered market detail page.
+- Added login-protected user profile pages with ranking, prediction stats, recent predictions, and recent comments.
+- Expanded smoke coverage to verify user profile auth boundaries.

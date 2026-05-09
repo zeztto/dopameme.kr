@@ -70,9 +70,9 @@ function LeaderboardRow({
 
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="truncate text-base font-black text-text-primary">
+          <Link href={`/users/${user.id}`} className="truncate text-base font-black text-text-primary transition hover:text-primary">
             {displayName(user)}
-          </span>
+          </Link>
           {isCurrentUser && (
             <span className="rounded-dopameme-pill bg-primary px-3 py-1 text-xs font-black text-white">
               내 순위
