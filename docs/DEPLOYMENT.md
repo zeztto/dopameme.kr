@@ -74,6 +74,19 @@ gh workflow run "Deploy service with Docker Compose" \
   -f health_url=https://dopameme.kr/api/health
 ```
 
+## Smoke Test
+
+Run after deployment, or against a local server with the same database-backed
+routes available:
+
+```bash
+npm run smoke -- --base-url https://dopameme.kr
+```
+
+The smoke test checks health/database readiness, public pages, protected-page
+redirects, and anonymous API auth boundaries without requiring extra
+dependencies.
+
 ## Notes
 
 - Real env files are not committed and are not synced by the deploy workflow.

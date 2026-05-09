@@ -23,3 +23,4 @@
 - Replaced the member activity placeholder with real prediction stats, ranking, recent predictions, and DPMM ledger history.
 - Improved the DPMM withdrawal wallet UX with status guidance, processing timeline, refresh controls, and transaction links.
 - Added admin dashboard DPMM operations metrics for withdrawal queues, locked balances, and recent ledger activity.
+- Added a dependency-free smoke test runner for health, public pages, auth redirects, and anonymous API boundaries.

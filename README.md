@@ -15,6 +15,9 @@ npm install
 
 # 개발 서버 실행
 npm run dev
+
+# 운영/로컬 smoke test
+npm run smoke -- --base-url https://dopameme.kr
 ```
 
 브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 결과를 확인하세요.
