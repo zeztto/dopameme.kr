@@ -1,6 +1,7 @@
 import { auth } from '@/auth'
 import Header from '@/components/Header'
 import { prisma } from '@/lib/db'
+import { getUnreadNotificationCount } from '@/lib/notifications'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
@@ -20,10 +21,17 @@ function ledgerTypeLabel(type: string) {
   if (type === 'welcome_bonus') return '웰컴 보너스'
   if (type === 'admin_adjustment') return '관리자 조정'
   if (type === 'prediction_stake') return '예측 참여'
+  if (type === 'prediction_liquidation') return '부분 청산'
+  if (type === 'prediction_liquidation_fee') return '청산 수수료'
+  if (type === 'position_purchase') return '포지션 구매'
+  if (type === 'position_sale') return '포지션 판매'
+  if (type === 'position_sale_fee') return '양도 수수료'
   if (type === 'market_payout') return '정산 보상'
   if (type === 'market_fee') return '정산 수수료'
   if (type === 'withdrawal_request') return '출금 요청'
   if (type === 'withdrawal_refund') return '출금 복원'
+  if (type === 'level_reward') return '레벨 보상'
+  if (type === 'item_purchase') return '아이템 구매'
   return type
 }
 
@@ -121,6 +129,7 @@ export default async function DashboardPage() {
     payoutTotal,
     recentPredictions,
     recentLedger,
+    unreadNotificationCount,
     totalUsers,
     higherRankedUsers,
   ] = await Promise.all([
@@ -179,6 +188,7 @@ export default async function DashboardPage() {
         createdAt: true,
       },
     }),
+    getUnreadNotificationCount(currentUser.id),
     prisma.user.count({ where: leaderboardWhere }),
     prisma.user.count({
       where: {
@@ -209,7 +219,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header userBalance={currentUser.dpmmBalance} />
+      <Header
+        userBalance={currentUser.dpmmBalance}
+        unreadNotificationCount={unreadNotificationCount}
+      />
 
       <main className="container mx-auto px-4 py-20">
         <section className="mb-12 text-center">
@@ -298,6 +311,66 @@ export default async function DashboardPage() {
                 className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
               >
                 프로필
+              </Link>
+              <Link
+                href="/feed"
+                className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+              >
+                활동 피드
+              </Link>
+              <Link
+                href="/app/recommendations"
+                className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+              >
+                AI 추천
+              </Link>
+              <Link
+                href="/app/trends"
+                className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+              >
+                트렌드 예측
+              </Link>
+              <Link
+                href="/app/stats"
+                className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+              >
+                통계
+              </Link>
+              <Link
+                href="/app/achievements"
+                className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+              >
+                업적
+              </Link>
+              <Link
+                href="/app/level"
+                className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+              >
+                레벨
+              </Link>
+              <Link
+                href="/app/seasons"
+                className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+              >
+                시즌
+              </Link>
+              <Link
+                href="/app/shop"
+                className="rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-center text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+              >
+                아이템샵
+              </Link>
+              <Link
+                href="/notifications"
+                className="rounded-dopameme-pill border-3 border-light-border bg-white px-6 py-3 text-center text-sm font-black text-text-secondary transition hover:border-primary hover:text-primary"
+              >
+                알림
+              </Link>
+              <Link
+                href="/app/security"
+                className="rounded-dopameme-pill border-3 border-light-border bg-white px-6 py-3 text-center text-sm font-black text-text-secondary transition hover:border-primary hover:text-primary"
+              >
+                보안
               </Link>
               <Link
                 href="/leaderboard"
@@ -455,6 +528,16 @@ export default async function DashboardPage() {
               <h4 className="mb-6 text-lg font-black text-text-primary">서비스</h4>
               <ul className="space-y-4 text-base">
                 <li><Link href="/app" className="font-semibold text-text-secondary transition hover:text-primary">내 활동</Link></li>
+                <li><Link href="/feed" className="font-semibold text-text-secondary transition hover:text-primary">활동 피드</Link></li>
+                <li><Link href="/app/recommendations" className="font-semibold text-text-secondary transition hover:text-primary">AI 추천</Link></li>
+                <li><Link href="/app/trends" className="font-semibold text-text-secondary transition hover:text-primary">트렌드 예측</Link></li>
+                <li><Link href="/app/stats" className="font-semibold text-text-secondary transition hover:text-primary">통계</Link></li>
+                <li><Link href="/app/achievements" className="font-semibold text-text-secondary transition hover:text-primary">업적</Link></li>
+                <li><Link href="/app/level" className="font-semibold text-text-secondary transition hover:text-primary">레벨</Link></li>
+                <li><Link href="/app/seasons" className="font-semibold text-text-secondary transition hover:text-primary">시즌</Link></li>
+                <li><Link href="/app/shop" className="font-semibold text-text-secondary transition hover:text-primary">아이템샵</Link></li>
+                <li><Link href="/notifications" className="font-semibold text-text-secondary transition hover:text-primary">알림</Link></li>
+                <li><Link href="/app/security" className="font-semibold text-text-secondary transition hover:text-primary">계정 보안</Link></li>
                 <li><Link href="/app/wallet" className="font-semibold text-text-secondary transition hover:text-primary">DPMM 출금 지갑</Link></li>
                 <li><Link href="/markets" className="font-semibold text-text-secondary transition hover:text-primary">예측 시장</Link></li>
                 <li><Link href="/leaderboard" className="font-semibold text-text-secondary transition hover:text-primary">순위표</Link></li>

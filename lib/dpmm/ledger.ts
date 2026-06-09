@@ -5,10 +5,17 @@ export const DPMM_LEDGER_TYPES = [
   'welcome_bonus',
   'admin_adjustment',
   'prediction_stake',
+  'prediction_liquidation',
+  'prediction_liquidation_fee',
+  'position_purchase',
+  'position_sale',
+  'position_sale_fee',
   'market_payout',
   'market_fee',
   'withdrawal_request',
   'withdrawal_refund',
+  'level_reward',
+  'item_purchase',
 ] as const
 
 export type DpmmLedgerType = (typeof DPMM_LEDGER_TYPES)[number]

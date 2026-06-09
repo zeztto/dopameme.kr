@@ -49,6 +49,12 @@ Required values:
 - `DPMM_EXPLORER_URL`
 - `DPMM_MIN_WITHDRAWAL_AMOUNT`
 - `DPMM_TREASURY_WALLET_ADDRESS` (optional public address)
+- `B2B_API_KEYS` (optional comma-separated API keys)
+- `WEB_PUSH_VAPID_PUBLIC_KEY` (optional PWA push public key)
+- `WEB_PUSH_VAPID_PRIVATE_KEY` (optional PWA push private key)
+- `WEB_PUSH_CONTACT` (optional VAPID subject, `mailto:` or HTTPS URL)
+- `WEBAUTHN_ORIGIN` (optional, defaults from `NEXTAUTH_URL`)
+- `WEBAUTHN_RP_ID` (optional, defaults from `NEXTAUTH_URL` hostname)
 - `NODE_ENV`
 - `PORT`
 - `HOSTNAME`
@@ -58,6 +64,12 @@ Required values:
 `DATABASE_URL` must use the Docker service host `postgres` and a URL-encoded
 password. For example, `p@ss#word` must be written as `p%40ss%23word` inside
 the connection string.
+
+If PWA push notifications are enabled, generate VAPID keys before deployment:
+
+```bash
+npx web-push generate-vapid-keys
+```
 
 Run from any machine authenticated with GitHub CLI:
 
@@ -86,6 +98,23 @@ npm run smoke -- --base-url https://dopameme.kr
 The smoke test checks health/database readiness, public pages, protected-page
 redirects, and anonymous API auth boundaries without requiring extra
 dependencies.
+
+## React Native Shell
+
+The native app scaffold lives in `mobile/` and is not built by the Docker
+deployment. It loads only the production web origin, `https://dopameme.kr`,
+through Expo WebView.
+
+```bash
+cd mobile
+npm install
+npm run ios
+npm run android
+```
+
+Before app-store distribution, confirm native icon/splash assets, privacy
+metadata, push notification entitlements, and WebView passkey fallback behavior
+per target OS version.
 
 ## Notes
 

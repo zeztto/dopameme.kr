@@ -29,6 +29,19 @@ model User {
   ledgerTransactions      DpmmLedgerTransaction[]   @relation("UserDpmmLedgerTransactions")
   actorLedgerTransactions DpmmLedgerTransaction[]   @relation("ActorDpmmLedgerTransactions")
   marketComments          MarketComment[]
+  following               UserFollow[]              @relation("UserFollowing")
+  followers               UserFollow[]              @relation("UserFollowers")
+  notifications           Notification[]            @relation("UserNotifications")
+  actorNotifications      Notification[]            @relation("ActorNotifications")
+  pushSubscriptions       PushSubscription[]
+  webAuthnCredentials     WebAuthnCredential[]
+  webAuthnChallenges      WebAuthnChallenge[]
+  achievements            UserAchievement[]
+  levelProgress           UserLevel?
+  seasonProgress          UserSeasonProgress[]
+  shopItems               UserShopItem[]
+  sellingPositionListings PositionListing[]         @relation("PositionListingSeller")
+  boughtPositionListings  PositionListing[]         @relation("PositionListingBuyer")
   solanaWallet            SolanaWallet?
   solanaWalletNonces      SolanaWalletNonce[]
   withdrawalRequests      SolanaWithdrawalRequest[] @relation("UserWithdrawalRequests")
@@ -186,6 +199,9 @@ model Market {
   title           String
   description     String
   category        String
+  region          String    @default("KR")
+  languageCode    String    @default("ko") @map("language_code")
+  timeZone        String    @default("Asia/Seoul") @map("time_zone")
   imageUrl        String?   @map("image_url")
   status          String    @default("active")
   source          String    @default("admin")
@@ -196,14 +212,20 @@ model Market {
   resolvedAt      DateTime? @map("resolved_at")
   winningOptionId String?   @map("winning_option_id")
 
-  creator     User            @relation("MarketCreator", fields: [creatorId], references: [id], onDelete: Cascade)
-  options     MarketOption[]
-  predictions Prediction[]
-  comments    MarketComment[]
+  creator        User                  @relation("MarketCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  options        MarketOption[]
+  predictions    Prediction[]
+  comments       MarketComment[]
+  listings       PositionListing[]
+  priceSnapshots MarketPriceSnapshot[]
+  ammConfig      MarketAmmConfig?
 
   @@index([status])
   @@index([source])
   @@index([hidden])
+  @@index([region])
+  @@index([languageCode])
+  @@index([timeZone])
   @@index([creatorId])
   @@map("markets")
 }
@@ -226,6 +248,259 @@ model MarketComment {
   @@map("market_comments")
 }
 
+model UserFollow {
+  id          String   @id @default(uuid())
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower  User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@index([createdAt])
+  @@map("user_follows")
+}
+
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  actorId    String?   @map("actor_id")
+  type       String
+  title      String
+  body       String?   @db.Text
+  targetType String?   @map("target_type")
+  targetId   String?   @map("target_id")
+  targetPath String?   @map("target_path")
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user  User  @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("ActorNotifications", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt, createdAt])
+  @@index([userId, createdAt])
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@map("notifications")
+}
+
+model PushSubscription {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  endpoint     String    @unique @db.Text
+  p256dh       String    @db.Text
+  auth         String    @db.Text
+  userAgent    String?   @map("user_agent") @db.Text
+  enabled      Boolean   @default(true)
+  failureCount Int       @default(0) @map("failure_count")
+  failedAt     DateTime? @map("failed_at")
+  lastUsedAt   DateTime? @map("last_used_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, enabled])
+  @@index([updatedAt])
+  @@map("push_subscriptions")
+}
+
+model WebAuthnCredential {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  credentialId String    @unique @map("credential_id")
+  publicKey    String    @map("public_key") @db.Text
+  counter      Int       @default(0)
+  transports   String?   @db.Text
+  deviceType   String?   @map("device_type")
+  backedUp     Boolean   @default(false) @map("backed_up")
+  name         String?
+  lastUsedAt   DateTime? @map("last_used_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([lastUsedAt])
+  @@map("webauthn_credentials")
+}
+
+model WebAuthnChallenge {
+  id         String    @id @default(uuid())
+  userId     String?   @map("user_id")
+  email      String?
+  type       String
+  challenge  String    @unique
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, expiresAt])
+  @@index([email, type, expiresAt])
+  @@index([expiresAt])
+  @@map("webauthn_challenges")
+}
+
+model AchievementDefinition {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String   @db.Text
+  category    String
+  icon        String
+  threshold   Int
+  rewardDpmm  Int      @default(0) @map("reward_dpmm")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  userAchievements UserAchievement[]
+
+  @@index([category, isActive])
+  @@index([sortOrder])
+  @@map("achievement_definitions")
+}
+
+model UserAchievement {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  achievementId String    @map("achievement_id")
+  progress      Int       @default(0)
+  unlockedAt    DateTime? @map("unlocked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement AchievementDefinition @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId, unlockedAt])
+  @@index([achievementId])
+  @@map("user_achievements")
+}
+
+model LevelDefinition {
+  id         String   @id @default(uuid())
+  level      Int      @unique
+  title      String
+  minXp      Int      @map("min_xp")
+  rewardDpmm Int      @default(0) @map("reward_dpmm")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([minXp])
+  @@index([isActive])
+  @@map("level_definitions")
+}
+
+model UserLevel {
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  xp               Int      @default(0)
+  level            Int      @default(1)
+  rewardedLevel    Int      @default(1) @map("rewarded_level")
+  lastCalculatedAt DateTime @default(now()) @map("last_calculated_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([level])
+  @@index([xp])
+  @@map("user_levels")
+}
+
+model SeasonEvent {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String   @db.Text
+  type        String
+  status      String   @default("active")
+  startsAt    DateTime @map("starts_at")
+  endsAt      DateTime @map("ends_at")
+  rewardDpmm  Int      @default(0) @map("reward_dpmm")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  progresses UserSeasonProgress[]
+
+  @@index([type, startsAt])
+  @@index([status, startsAt, endsAt])
+  @@index([sortOrder])
+  @@map("season_events")
+}
+
+model UserSeasonProgress {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  seasonId         String   @map("season_id")
+  score            Int      @default(0)
+  predictionCount  Int      @default(0) @map("prediction_count")
+  winCount         Int      @default(0) @map("win_count")
+  stakeAmount      Int      @default(0) @map("stake_amount")
+  profitAmount     Int      @default(0) @map("profit_amount")
+  commentCount     Int      @default(0) @map("comment_count")
+  lastCalculatedAt DateTime @default(now()) @map("last_calculated_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season SeasonEvent @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, seasonId])
+  @@index([seasonId, score])
+  @@index([userId])
+  @@map("user_season_progress")
+}
+
+model ShopItem {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String   @db.Text
+  category    String
+  rarity      String   @default("common")
+  priceDpmm   Int      @default(0) @map("price_dpmm")
+  previewText String   @map("preview_text")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owners UserShopItem[]
+
+  @@index([category, sortOrder])
+  @@index([isActive])
+  @@map("shop_items")
+}
+
+model UserShopItem {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  itemId      String   @map("item_id")
+  isEquipped  Boolean  @default(false) @map("is_equipped")
+  purchasedAt DateTime @default(now()) @map("purchased_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item ShopItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@index([userId, isEquipped])
+  @@index([itemId])
+  @@map("user_shop_items")
+}
+
 model MarketOption {
   id               String   @id @default(uuid())
   marketId         String   @map("market_id")
@@ -234,30 +509,98 @@ model MarketOption {
   totalAmount      Int      @default(0) @map("total_amount")
   createdAt        DateTime @default(now()) @map("created_at")
 
-  market      Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
-  predictions Prediction[]
+  market         Market                @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  predictions    Prediction[]
+  listings       PositionListing[]
+  priceSnapshots MarketPriceSnapshot[]
 
+  @@unique([marketId, title])
   @@index([marketId])
   @@map("market_options")
 }
 
 model Prediction {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  marketId  String   @map("market_id")
-  optionId  String   @map("option_id")
-  amount    Int
-  createdAt DateTime @default(now()) @map("created_at")
-  resolved  Int      @default(0)
-  payout    Int      @default(0)
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  marketId         String   @map("market_id")
+  optionId         String   @map("option_id")
+  amount           Int
+  liquidatedAmount Int      @default(0) @map("liquidated_amount")
+  createdAt        DateTime @default(now()) @map("created_at")
+  resolved         Int      @default(0)
+  payout           Int      @default(0)
 
-  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  market Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
-  option MarketOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market   Market            @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  option   MarketOption      @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  listings PositionListing[]
 
   @@unique([userId, marketId])
   @@index([userId])
   @@index([marketId])
   @@index([optionId])
   @@map("predictions")
+}
+
+model PositionListing {
+  id           String    @id @default(uuid())
+  sellerId     String    @map("seller_id")
+  buyerId      String?   @map("buyer_id")
+  predictionId String    @map("prediction_id")
+  marketId     String    @map("market_id")
+  optionId     String    @map("option_id")
+  amount       Int
+  price        Int
+  status       String    @default("active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  soldAt       DateTime? @map("sold_at")
+  cancelledAt  DateTime? @map("cancelled_at")
+
+  seller     User         @relation("PositionListingSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer      User?        @relation("PositionListingBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  prediction Prediction   @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  market     Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  option     MarketOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([predictionId])
+  @@index([marketId, status, createdAt])
+  @@index([optionId])
+  @@index([status])
+  @@map("position_listings")
+}
+
+model MarketPriceSnapshot {
+  id             String   @id @default(uuid())
+  marketId       String   @map("market_id")
+  optionId       String   @map("option_id")
+  probabilityBps Int      @map("probability_bps")
+  optionAmount   Int      @map("option_amount")
+  totalAmount    Int      @map("total_amount")
+  source         String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  market Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  option MarketOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@index([marketId, createdAt])
+  @@index([optionId, createdAt])
+  @@index([source])
+  @@map("market_price_snapshots")
+}
+
+model MarketAmmConfig {
+  id               String   @id @default(uuid())
+  marketId         String   @unique @map("market_id")
+  enabled          Boolean  @default(true)
+  virtualLiquidity Int      @default(5000) @map("virtual_liquidity")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([enabled])
+  @@map("market_amm_configs")
 }

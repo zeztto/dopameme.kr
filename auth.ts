@@ -5,6 +5,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@/lib/db'
 import { checkRateLimit, getRequestIp } from '@/lib/rate-limit'
 import { isValidEmail, normalizeEmail } from '@/lib/validation'
+import { verifyPasskeyLogin } from '@/lib/webauthn'
 import bcrypt from 'bcryptjs'
 
 const oauthWelcomeBonus = 10000
@@ -25,10 +26,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
     Credentials({
       credentials: {
+        mode: { label: 'Mode', type: 'text' },
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        webauthnResponse: { label: 'WebAuthn Response', type: 'text' },
       },
       async authorize(credentials) {
+        if (credentials?.mode === 'passkey') {
+          return verifyPasskeyLogin({
+            email: credentials.email,
+            responseJson: credentials.webauthnResponse,
+          })
+        }
+
         const email = normalizeEmail(credentials?.email)
         const password =
           typeof credentials?.password === 'string' ? credentials.password : ''

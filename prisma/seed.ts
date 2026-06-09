@@ -1,4 +1,8 @@
 import { prisma } from '@/lib/db'
+import { ACHIEVEMENT_CATALOG, syncAchievementDefinitions } from '@/lib/achievements'
+import { LEVEL_DEFINITIONS, syncLevelDefinitions } from '@/lib/levels'
+import { syncSeasonEvents } from '@/lib/seasons'
+import { SHOP_ITEM_CATALOG, syncShopItems } from '@/lib/shop'
 import { normalizeEmail } from '@/lib/validation'
 import { seedMockMarkets } from '@/scripts/generate-markets'
 import bcrypt from 'bcryptjs'
@@ -75,9 +79,13 @@ async function main() {
   }
 
   const result = await seedMockMarkets(admin.id)
+  await syncAchievementDefinitions()
+  await syncLevelDefinitions()
+  await syncSeasonEvents()
+  await syncShopItems()
 
   console.log(
-    `Seed complete: admin=${admin.email}, markets_created=${result.createdCount}, markets_existing=${result.existingCount}, markets_total=${result.totalCount}`
+    `Seed complete: admin=${admin.email}, markets_created=${result.createdCount}, markets_existing=${result.existingCount}, markets_total=${result.totalCount}, achievements=${ACHIEVEMENT_CATALOG.length}, levels=${LEVEL_DEFINITIONS.length}, seasons=2, shop_items=${SHOP_ITEM_CATALOG.length}`
   )
 }
 

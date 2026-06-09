@@ -3,23 +3,34 @@
 import { useState } from 'react'
 import { placePrediction } from './actions'
 import { useRouter } from 'next/navigation'
+import { quoteAmmStake, type AmmConfigInput, type AmmOptionInput } from '@/lib/markets/amm'
 
 export default function PredictionForm({
   marketId,
   optionId,
   optionTitle,
   userBalance,
+  quoteOptions,
+  ammConfig,
 }: {
   marketId: string
   optionId: string
   optionTitle: string
   userBalance: number
+  quoteOptions: AmmOptionInput[]
+  ammConfig: AmmConfigInput
 }) {
   const [amount, setAmount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const router = useRouter()
+  const quote = quoteAmmStake({
+    options: quoteOptions,
+    optionId,
+    amount,
+    config: ammConfig,
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,6 +104,21 @@ export default function PredictionForm({
           </div>
           <div className="text-text-tertiary text-xs font-semibold">DPMM</div>
         </div>
+
+        {quote && amount >= 100 && (
+          <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-3 text-xs font-bold text-text-secondary">
+            <div className="flex items-center justify-between gap-3">
+              <span>{optionTitle} AMM 평균가</span>
+              <span className="text-primary">{(quote.averagePriceBps / 100).toFixed(1)}%</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span>예상 확률 변화</span>
+              <span className="text-text-primary">
+                {(quote.beforeProbabilityBps / 100).toFixed(1)}% → {(quote.afterProbabilityBps / 100).toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Quick Amount Buttons - Add on Click */}
         <div className="grid grid-cols-4 gap-2">

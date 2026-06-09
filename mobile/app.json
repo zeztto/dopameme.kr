@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "도파밈",
+    "slug": "dopameme-mobile",
+    "scheme": "dopameme",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "kr.dopameme.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "kr.dopameme.app"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "siteOrigin": "https://dopameme.kr"
+    }
+  }
+}

@@ -1,22 +1,73 @@
 import { auth } from "@/auth"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { prisma } from "@/lib/db"
 import { isAdmin } from "@/lib/auth-utils"
+import { computeAmmOptionProbabilities } from "@/lib/markets/amm"
 import MarketList from "./market-list"
 import Header from "@/components/Header"
+import { getUnreadNotificationCount } from "@/lib/notifications"
+import { getCurrentLocale } from "@/lib/i18n-server"
+import { landingCopy, marketsCopy, OPEN_GRAPH_LOCALES, publicMetadataCopy } from "@/lib/i18n"
+import { absoluteUrl, buildJsonLdScript, DEFAULT_OG_IMAGE, SITE_NAME } from "@/lib/seo"
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale()
+  const copy = publicMetadataCopy[locale].markets
+
+  return {
+    title: { absolute: copy.title },
+    description: copy.description,
+    alternates: {
+      canonical: "/markets",
+    },
+    openGraph: {
+      type: "website",
+      locale: OPEN_GRAPH_LOCALES[locale],
+      url: "/markets",
+      siteName: SITE_NAME,
+      title: copy.title,
+      description: copy.description,
+      images: [
+        {
+          url: DEFAULT_OG_IMAGE,
+          width: 1200,
+          height: 630,
+          alt: copy.imageAlt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: copy.title,
+      description: copy.description,
+      images: [DEFAULT_OG_IMAGE],
+    },
+  }
+}
 
 export default async function MarketsPage() {
-  const session = await auth()
-  const admin = await isAdmin()
+  const [session, admin, locale] = await Promise.all([
+    auth(),
+    isAdmin(),
+    getCurrentLocale(),
+  ])
+  const copy = marketsCopy[locale]
+  const footerCopy = landingCopy[locale]
   let activeUser = false
+  let unreadNotificationCount = 0
 
   if (session?.user?.id) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { status: true },
-    })
+    const [user, notificationCount] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { status: true },
+      }),
+      getUnreadNotificationCount(session.user.id),
+    ])
 
     activeUser = user?.status === 'active'
+    unreadNotificationCount = activeUser ? notificationCount : 0
   }
 
   // 활성 및 확정된 마켓 조회
@@ -29,6 +80,9 @@ export default async function MarketsPage() {
       title: true,
       description: true,
       category: true,
+      region: true,
+      languageCode: true,
+      timeZone: true,
       imageUrl: true,
       endsAt: true,
       createdAt: true,
@@ -36,6 +90,12 @@ export default async function MarketsPage() {
       winningOptionId: true,
       hidden: true,
       options: true,
+      ammConfig: {
+        select: {
+          enabled: true,
+          virtualLiquidity: true,
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -49,6 +109,10 @@ export default async function MarketsPage() {
   const sortedMarkets = allMarkets.sort((a, b) => {
     if (a.status === 'active' && b.status === 'resolved') return -1
     if (a.status === 'resolved' && b.status === 'active') return 1
+    const aLocaleMatch = a.languageCode === locale
+    const bLocaleMatch = b.languageCode === locale
+    if (aLocaleMatch && !bLocaleMatch) return -1
+    if (!aLocaleMatch && bLocaleMatch) return 1
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
 
@@ -58,20 +122,36 @@ export default async function MarketsPage() {
 
     return {
       ...market,
-      options: market.options.map(opt => ({
+      options: computeAmmOptionProbabilities(market.options, market.ammConfig).map(opt => ({
         ...opt,
-        percentage: totalAmount > 0
-          ? Math.round((opt.totalAmount / totalAmount) * 100)
-          : Math.round(100 / market.options.length),
         isWinner: market.status === 'resolved' && market.winningOptionId === opt.id,
       })),
       totalAmount,
     }
   })
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "도파밈 예측 마켓",
+    url: absoluteUrl("/markets"),
+    itemListElement: marketsWithOptions.slice(0, 20).map((market, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: absoluteUrl(`/markets/${market.id}`),
+      name: market.title,
+    })),
+  }
 
   return (
     <div className="min-h-screen bg-white">
-      <Header isAuthenticated={activeUser} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: buildJsonLdScript(structuredData) }}
+      />
+      <Header
+        isAuthenticated={activeUser}
+        unreadNotificationCount={unreadNotificationCount}
+      />
 
       <main className="container mx-auto px-4 py-20">
         {/* Admin Button */}
@@ -81,7 +161,7 @@ export default async function MarketsPage() {
               href="/admin/markets/create"
               className="bg-secondary text-white px-6 py-3 rounded-full font-black hover:bg-secondary-dark hover:shadow-xl transition"
             >
-              + 새 예측 시장 생성
+              {copy.adminCreate}
             </Link>
           </div>
         )}
@@ -90,19 +170,19 @@ export default async function MarketsPage() {
         <section className="text-center mb-16">
           <div className="inline-block mb-6">
             <span className="text-white text-sm font-black bg-primary px-8 py-3 rounded-full shadow-xl">
-              🎯 예측 시장
+              {copy.heroBadge}
             </span>
           </div>
           <h1 className="text-5xl font-black text-text-primary mb-4">
-            다양한 이슈에 예측하세요
+            {copy.title}
           </h1>
           <p className="text-text-secondary text-xl font-medium">
-            실시간으로 업데이트되는 예측 시장에서 DPMM을 획득하세요
+            {copy.subtitle}
           </p>
         </section>
 
         {/* Market List with Filter */}
-        <MarketList markets={marketsWithOptions} isAdmin={admin} />
+        <MarketList markets={marketsWithOptions} isAdmin={admin} locale={locale} copy={copy} />
       </main>
 
       {/* Footer */}
@@ -118,25 +198,25 @@ export default async function MarketsPage() {
                 </span>
               </div>
               <p className="text-text-secondary text-base leading-relaxed font-medium">
-                게임처럼 즐기는 예측 플랫폼
+                {footerCopy.footerTagline}
               </p>
             </div>
 
             <div>
-              <h4 className="text-text-primary font-black mb-6 text-lg">서비스</h4>
+              <h4 className="text-text-primary font-black mb-6 text-lg">{footerCopy.serviceTitle}</h4>
               <ul className="space-y-4 text-base">
-                <li><Link href="/app" className="text-text-secondary hover:text-primary transition font-semibold">내 활동</Link></li>
-                <li><Link href="/markets" className="text-text-secondary hover:text-primary transition font-semibold">예측 시장</Link></li>
-                <li><Link href="/leaderboard" className="text-text-secondary hover:text-primary transition font-semibold">순위표</Link></li>
+                <li><Link href="/app" className="text-text-secondary hover:text-primary transition font-semibold">{footerCopy.footerLinks.activity}</Link></li>
+                <li><Link href="/markets" className="text-text-secondary hover:text-primary transition font-semibold">{footerCopy.footerLinks.markets}</Link></li>
+                <li><Link href="/leaderboard" className="text-text-secondary hover:text-primary transition font-semibold">{footerCopy.footerLinks.leaderboard}</Link></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="text-text-primary font-black mb-6 text-lg">정보</h4>
+              <h4 className="text-text-primary font-black mb-6 text-lg">{footerCopy.infoTitle}</h4>
               <ul className="space-y-4 text-base">
-                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">도파밈 소개</Link></li>
-                <li><Link href="/terms" className="text-text-secondary hover:text-primary transition font-semibold">이용약관</Link></li>
-                <li><Link href="/privacy" className="text-text-secondary hover:text-primary transition font-semibold">개인정보처리방침</Link></li>
+                <li><Link href="/about" className="text-text-secondary hover:text-primary transition font-semibold">{footerCopy.footerLinks.about}</Link></li>
+                <li><Link href="/terms" className="text-text-secondary hover:text-primary transition font-semibold">{footerCopy.footerLinks.terms}</Link></li>
+                <li><Link href="/privacy" className="text-text-secondary hover:text-primary transition font-semibold">{footerCopy.footerLinks.privacy}</Link></li>
               </ul>
             </div>
           </div>

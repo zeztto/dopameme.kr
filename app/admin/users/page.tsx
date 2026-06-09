@@ -112,10 +112,16 @@ function ledgerTypeLabel(type: string) {
   if (type === 'welcome_bonus') return '웰컴 보너스'
   if (type === 'admin_adjustment') return '관리자 조정'
   if (type === 'prediction_stake') return '예측 참여'
+  if (type === 'prediction_liquidation') return '부분 청산'
+  if (type === 'prediction_liquidation_fee') return '청산 수수료'
+  if (type === 'position_purchase') return '포지션 구매'
+  if (type === 'position_sale') return '포지션 판매'
+  if (type === 'position_sale_fee') return '양도 수수료'
   if (type === 'market_payout') return '정산 보상'
   if (type === 'market_fee') return '정산 수수료'
   if (type === 'withdrawal_request') return '출금 요청'
   if (type === 'withdrawal_refund') return '출금 복원'
+  if (type === 'level_reward') return '레벨 보상'
   return type
 }
 

@@ -2,6 +2,12 @@ import Link from 'next/link'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import AdminMarketActions from './AdminMarketActions'
+import {
+  formatMarketDateTime,
+  getMarketRegionOption,
+  getMarketTimeZoneOption,
+  MARKET_REGION_OPTIONS,
+} from '@/lib/markets/regions'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +17,7 @@ type AdminMarketsPageProps = {
     status?: string
     source?: string
     visibility?: string
+    region?: string
   }>
 }
 
@@ -30,6 +37,14 @@ const visibilityOptions = [
   { value: 'all', label: '전체 노출' },
   { value: 'visible', label: '노출' },
   { value: 'hidden', label: '숨김' },
+]
+
+const regionOptions = [
+  { value: 'all', label: '전체 지역' },
+  ...MARKET_REGION_OPTIONS.map((option) => ({
+    value: option.code,
+    label: `${option.flag} ${option.label}`,
+  })),
 ]
 
 function buildFilterHref(params: Record<string, string | undefined>, key: string, value: string) {
@@ -64,6 +79,7 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
   const status = filters.status || 'all'
   const source = filters.source || 'all'
   const visibility = filters.visibility || 'all'
+  const region = filters.region || 'all'
 
   const where: Prisma.MarketWhereInput = {}
 
@@ -81,11 +97,17 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
     where.hidden = false
   }
 
+  if (region !== 'all') {
+    where.region = region
+  }
+
   if (q) {
     where.OR = [
       { title: { contains: q, mode: 'insensitive' } },
       { description: { contains: q, mode: 'insensitive' } },
       { category: { contains: q, mode: 'insensitive' } },
+      { region: { contains: q, mode: 'insensitive' } },
+      { languageCode: { contains: q, mode: 'insensitive' } },
     ]
   }
 
@@ -99,6 +121,9 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
       id: true,
       title: true,
       category: true,
+      region: true,
+      languageCode: true,
+      timeZone: true,
       status: true,
       source: true,
       hidden: true,
@@ -124,7 +149,7 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
     },
   })
 
-  const filterParams = { q, status, source, visibility }
+  const filterParams = { q, status, source, visibility, region }
 
   return (
     <div className="space-y-6">
@@ -136,12 +161,26 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
             목업 마켓과 운영 마켓을 구분하고 노출 상태를 관리합니다.
           </p>
         </div>
-        <Link
-          href="/admin/markets/create"
-          className="inline-flex items-center justify-center rounded-dopameme-pill bg-primary px-6 py-3 text-sm font-black text-white shadow-token-brand transition hover:bg-primary-dark"
-        >
-          새 마켓 생성
-        </Link>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/admin/stats/trends"
+            className="inline-flex items-center justify-center rounded-dopameme-pill border-3 border-secondary bg-white px-6 py-3 text-sm font-black text-secondary transition hover:bg-secondary hover:text-white"
+          >
+            트렌드 분석
+          </Link>
+          <Link
+            href="/admin/stats/markets"
+            className="inline-flex items-center justify-center rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+          >
+            마켓 통계
+          </Link>
+          <Link
+            href="/admin/markets/create"
+            className="inline-flex items-center justify-center rounded-dopameme-pill bg-primary px-6 py-3 text-sm font-black text-white shadow-token-brand transition hover:bg-primary-dark"
+          >
+            새 마켓 생성
+          </Link>
+        </div>
       </header>
 
       <section className="rounded-dopameme-lg border-3 border-light-border bg-white p-4 shadow-token-sm">
@@ -201,6 +240,19 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
               {option.label}
             </Link>
           ))}
+          {regionOptions.map((option) => (
+            <Link
+              key={option.value}
+              href={buildFilterHref(filterParams, 'region', option.value)}
+              className={`rounded-dopameme-pill border-2 px-4 py-2 text-xs font-black transition ${
+                region === option.value
+                  ? 'border-success bg-success text-white'
+                  : 'border-light-border text-text-secondary hover:border-success hover:text-success'
+              }`}
+            >
+              {option.label}
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -223,7 +275,7 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] border-collapse">
+            <table className="w-full min-w-[1080px] border-collapse">
               <thead className="bg-light-bg-alt">
                 <tr className="text-left text-xs font-black uppercase text-text-tertiary">
                   <th className="px-5 py-3">마켓</th>
@@ -238,6 +290,8 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
                 {markets.map((market) => {
                   const volume = market.options.reduce((sum, option) => sum + option.totalAmount, 0)
                   const predictions = market._count.predictions
+                  const regionMeta = getMarketRegionOption(market.region)
+                  const timeZoneMeta = getMarketTimeZoneOption(market.timeZone)
 
                   return (
                     <tr key={market.id} className="align-top transition hover:bg-primary/5">
@@ -245,6 +299,15 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded-dopameme-pill bg-secondary/10 px-3 py-1 text-xs font-black text-secondary">
                             {market.category}
+                          </span>
+                          <span className="rounded-dopameme-pill bg-primary/10 px-3 py-1 text-xs font-black text-primary">
+                            {regionMeta.flag} {regionMeta.label}
+                          </span>
+                          <span className="rounded-dopameme-pill bg-gray-100 px-3 py-1 text-xs font-black uppercase text-text-tertiary">
+                            {market.languageCode}
+                          </span>
+                          <span className="rounded-dopameme-pill bg-success/10 px-3 py-1 text-xs font-black text-success">
+                            {timeZoneMeta.abbreviation}
                           </span>
                           {market.hidden && (
                             <span className="rounded-dopameme-pill bg-gray-100 px-3 py-1 text-xs font-black text-text-tertiary">
@@ -289,7 +352,7 @@ export default async function AdminMarketsPage({ searchParams }: AdminMarketsPag
                         </div>
                       </td>
                       <td className="px-4 py-4 text-sm font-bold text-text-secondary">
-                        {formatDate(market.endsAt)}
+                        {formatMarketDateTime(market.endsAt, market.timeZone)}
                       </td>
                       <td className="px-5 py-4">
                         <AdminMarketActions

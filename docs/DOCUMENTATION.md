@@ -226,6 +226,9 @@ dopameme.kr/
 ├── app/                              # Next.js App Router
 │   ├── about/                        # 소개 페이지
 │   ├── admin/                        # 관리자 기능
+│   │   ├── stats/anomalies/          # 이상 거래 탐지
+│   │   ├── stats/markets/            # 마켓 통계
+│   │   ├── stats/trends/             # 트렌드 분석
 │   │   └── markets/
 │   │       ├── create/               # 마켓 생성
 │   │       └── [id]/
@@ -233,31 +236,66 @@ dopameme.kr/
 │   │           ├── toggle-hidden/    # 가리기/보이기
 │   │           └── delete/           # 삭제
 │   ├── api/
-│   │   └── auth/[...nextauth]/       # NextAuth API 라우트
-│   ├── app/                          # 내 활동 페이지
+│   │   ├── auth/[...nextauth]/       # NextAuth API 라우트
+│   │   ├── b2b/analytics/            # B2B aggregate analytics API
+│   │   ├── push/subscriptions/       # Web Push subscription API
+│   │   └── webauthn/                 # WebAuthn/passkey API
+│   ├── app/                          # 내 활동, AI 추천, 트렌드 예측, 업적, 레벨, 시즌, 아이템샵, 통계 페이지
+│   │   ├── achievements/             # 업적 현황
+│   │   ├── level/                    # XP/레벨/보상
+│   │   ├── recommendations/          # AI 예측 추천
+│   │   ├── seasons/                  # 시즌 챔피언십
+│   │   ├── shop/                     # 아이템샵
+│   │   ├── security/                 # 계정 보안/패스키 관리
+│   │   ├── stats/                    # 사용자 통계 대시보드
+│   │   └── trends/                   # 트렌드 예측
+│   ├── feed/                         # 활동 피드
 │   ├── leaderboard/                  # 순위표
+│   ├── locale/                       # locale cookie 설정 Server Action
 │   ├── login/                        # 로그인
 │   ├── markets/                      # 예측 시장 목록
 │   │   └── [id]/                     # 예측 상세
+│   ├── notifications/                # 알림함
+│   ├── offline/                      # PWA 오프라인 fallback
 │   ├── privacy/                      # 개인정보처리방침
 │   ├── signup/                       # 회원가입
 │   ├── terms/                        # 이용약관
 │   ├── globals.css                   # 전역 스타일
 │   ├── icon.svg                      # 파비콘
 │   ├── layout.tsx                    # 루트 레이아웃
+│   ├── manifest.ts                   # Web App Manifest
 │   ├── opengraph-image.tsx           # OG 이미지
 │   └── page.tsx                      # 랜딩 페이지
 │
 ├── components/                       # 재사용 가능 컴포넌트
 │   ├── Header.tsx                    # 헤더 (로고, 네비게이션, DPMM 잔액)
+│   ├── LanguageSwitcher.tsx          # KO/EN/JA locale 전환 UI
+│   ├── OfflineStatusBanner.tsx       # 오프라인 상태 배너
+│   ├── ServiceWorkerRegistration.tsx # Service Worker 등록
 │   └── LogoutButton.tsx              # 로그아웃 버튼
 │
 ├── lib/                              # 유틸리티 라이브러리
+│   ├── achievements.ts               # 업적 정의/진행률 계산
+│   ├── anomaly-detection.ts          # 이상 거래 탐지 score 계산
+│   ├── i18n.ts                       # locale/copy/date locale 정의
+│   ├── i18n-server.ts                # cookie 기반 현재 locale 조회
+│   ├── levels.ts                     # XP/레벨/보상 계산
+│   ├── markets/
+│   │   └── regions.ts                # 마켓 지역/언어 metadata 정의
+│   ├── recommendations.ts            # AI 예측 추천 score 계산
+│   ├── seasons.ts                    # 시즌 이벤트/leaderboard 계산
+│   ├── shop.ts                       # 아이템샵 catalog/구매/장착
+│   ├── trend-predictions.ts          # 트렌드 예측 score 계산
 │   ├── db/
 │   │   ├── index.ts                  # DB 연결
 │   │   └── schema.ts                 # Drizzle 스키마
 │   ├── auth-utils.ts                 # 인증 유틸리티
 │   └── nickname-generator.ts         # 닉네임 생성기
+│
+├── mobile/                           # Expo React Native shell
+│   ├── App.js                        # production WebView shell
+│   ├── app.json                      # Expo app metadata
+│   └── package.json                  # mobile runtime dependencies
 │
 ├── scripts/                          # DB 스크립트
 │   ├── create-fee-account.sql        # 수수료 계정 생성
@@ -269,6 +307,8 @@ dopameme.kr/
 │   ├── meta/                         # 스냅샷
 │   └── *.sql                         # SQL 마이그레이션
 │
+├── public/
+│   └── sw.js                         # PWA offline Service Worker
 ├── auth.ts                           # NextAuth 설정
 ├── middleware.ts                     # 라우트 보호 (제거됨)
 ├── tailwind.config.ts                # Tailwind 설정
@@ -291,21 +331,66 @@ dopameme.kr/
 - `/privacy` - 개인정보처리방침
 - `/login` - 로그인
 - `/signup` - 회원가입
+- `/offline` - 모바일/PWA 오프라인 fallback
+- `/manifest.webmanifest` - Web App Manifest
 
 #### 인증 필요 페이지 (Protected Routes)
 - `/app` - 내 활동 (내 예측, 포인트 내역, 통계)
+- `/app/recommendations` - 활동/시장 신호 기반 AI 예측 추천
+- `/app/trends` - 최근 참여/댓글/신규 마켓 기반 트렌드 예측
+- `/app/achievements` - 업적 현황 및 다음 목표
+- `/app/level` - XP, 레벨, 레벨업 보상 수령
+- `/app/seasons` - 월간/분기 시즌 챔피언십 leaderboard
+- `/app/shop` - 프로필 테마, 배지, 이모티콘 아이템샵
+- `/app/security` - 패스키 등록/삭제 및 계정 보안
+- `/app/stats` - 사용자 통계 대시보드
+- `/feed` - 팔로우한 회원들의 공개 활동 피드
 - `/markets` - 예측 시장 목록
 - `/markets/[id]` - 예측 상세 및 마켓 토론
+- `/notifications` - 새 팔로워와 내 마켓 댓글 알림함
 - `/users/[id]` - 사용자 프로필
 - `/leaderboard` - 순위표
 
 #### 관리자 전용 페이지 (Admin Only)
+- `/admin` - 운영 대시보드
+- `/admin/markets` - 마켓 관리
+- `/admin/stats/markets` - 마켓 통계
+- `/admin/stats/trends` - 트렌드 분석
+- `/admin/stats/anomalies` - 이상 거래 탐지
 - `/admin/markets/create` - 마켓 생성
 - `/admin/markets/[id]/resolve` - 결과 확정
 - `/admin/markets/[id]/toggle-hidden` - 가리기/보이기
 - `/admin/markets/[id]/delete` - 삭제
 
-### 3.4 Server Actions 아키텍처
+#### API Routes
+- `/api/b2b/analytics` - 비식별 aggregate 마켓/카테고리/트렌드 데이터
+- `/api/push/subscriptions` - 로그인 사용자 Web Push 구독 등록/해제
+- `/api/webauthn/register/options` - 로그인 사용자 패스키 등록 옵션 생성
+- `/api/webauthn/register/verify` - 로그인 사용자 패스키 등록 검증
+- `/api/webauthn/authenticate/options` - 패스키 로그인 옵션 생성
+
+### 3.4 모바일/PWA/React Native 기반
+
+도파밈은 현재 Next.js 서비스의 PWA 기반과 Expo React Native shell을 함께 둔다. native app은 production origin인 `https://dopameme.kr`만 WebView로 로드하는 얇은 shell이며, 핵심 서비스 로직과 인증은 web origin에서 계속 처리한다.
+
+- `app/manifest.ts`: 홈 화면 설치용 Web App Manifest를 제공한다.
+- `components/ServiceWorkerRegistration.tsx`: HTTPS, localhost, 127.0.0.1 환경에서만 Service Worker를 등록한다.
+- `public/sw.js`: navigation 요청 실패 시 정적 offline HTML fallback을 반환한다.
+- `app/offline/page.tsx`: 네트워크 단절 시 사용자에게 복구 안내와 주요 진입 링크를 제공한다.
+- `components/OfflineStatusBanner.tsx`: 브라우저가 offline 상태로 전환되면 전역 안내 배너를 표시한다.
+- `app/api/push/subscriptions/route.ts`: 로그인 사용자의 브라우저 push subscription을 등록/해제한다.
+- `lib/push.ts`: VAPID 설정과 subscription별 Web Push 발송을 담당한다.
+- `app/app/security/page.tsx`: WebAuthn/passkey 등록과 삭제를 제공한다.
+- `lib/webauthn.ts`: WebAuthn challenge 생성, origin/rpID 검증, credential counter 갱신을 담당한다.
+- `mobile/App.js`: Expo WebView shell, origin allowlist, native toolbar, retry state를 제공한다.
+- `mobile/app.json`: iOS/Android package id, scheme, production origin metadata를 정의한다.
+
+캐시 정책은 보수적으로 유지한다. cookie-locale HTML route는 Cache API에 저장하지 않고 network-only로 처리한다. `/manifest.webmanifest`, `/icon.svg`만 precache 또는 runtime cache 대상으로 삼고, 인증 페이지·API 응답·사용자별 데이터는 cache하지 않는다.
+푸시 payload는 알림 제목, 요약, 내부 URL만 포함하고, 외부 URL은 Service Worker에서 `/notifications`로 fallback한다.
+패스키는 WebAuthn user verification을 요구하며, challenge는 5분 만료 후 재사용할 수 없다.
+React Native shell은 `dopameme.kr` 외부 URL을 system browser로 위임한다. WebView에서 passkey가 제한되는 기기는 toolbar의 browser fallback을 사용한다.
+
+### 3.5 Server Actions 아키텍처
 
 Next.js 15의 Server Actions를 활용한 API-less 아키텍처:
 
@@ -349,7 +434,6 @@ export async function placePrediction(formData) {
 │    users     │────1:N──│   predictions    │──N:1────│ market_options   │
 └──────────────┘         └──────────────────┘         └──────────────────┘
        │                                                        │
-       │                                                        │
        │                  ┌──────────────────┐                 │
        └──────────────────│     markets      │─────────────────┘
                           └──────────────────┘
@@ -361,6 +445,11 @@ export async function placePrediction(formData) {
                           ┌──────────────────┐
                           │    sessions      │
                           └──────────────────┘
+
+┌──────────────┐         ┌──────────────────┐         ┌──────────────┐
+│ follower     │────1:N──│   user_follows   │──N:1────│ following    │
+│ users        │         │                  │         │ users        │
+└──────────────┘         └──────────────────┘         └──────────────┘
 ```
 
 ### 4.2 테이블 스키마
@@ -382,6 +471,251 @@ export async function placePrediction(formData) {
 **인덱스**:
 - PRIMARY KEY: `id`
 - UNIQUE: `email`, `name`
+
+#### user_follows (사용자 팔로우)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| followerId | text | FK → users.id | 팔로우를 건 사용자 ID |
+| followingId | text | FK → users.id | 팔로우 대상 사용자 ID |
+| createdAt | timestamp | DEFAULT NOW() | 팔로우 생성 일시 |
+
+**인덱스**:
+- UNIQUE: `(followerId, followingId)`
+- INDEX: `followerId`, `followingId`, `createdAt`
+- CHECK: `followerId <> followingId`
+
+#### notifications (알림)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| userId | text | FK → users.id | 알림 수신자 ID |
+| actorId | text | FK → users.id | 알림 발생 사용자 ID |
+| type | text | NOT NULL | 알림 타입 |
+| title | text | NOT NULL | 알림 제목 |
+| body | text | - | 알림 보조 내용 |
+| targetType | text | - | 연결 대상 타입 |
+| targetId | text | - | 연결 대상 ID |
+| targetPath | text | - | 클릭 시 이동 경로 |
+| readAt | timestamp | - | 읽음 처리 시간 |
+| createdAt | timestamp | DEFAULT NOW() | 알림 생성 일시 |
+
+**인덱스**:
+- INDEX: `(userId, readAt, createdAt)`, `(userId, createdAt)`
+- INDEX: `actorId`, `(targetType, targetId)`
+
+#### push_subscriptions (브라우저 푸시 구독)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| userId | text | FK → users.id | 구독 소유 사용자 ID |
+| endpoint | text | UNIQUE | 브라우저 push endpoint |
+| p256dh | text | NOT NULL | Push encryption public key |
+| auth | text | NOT NULL | Push auth secret |
+| userAgent | text | - | 등록 브라우저 user-agent |
+| enabled | boolean | DEFAULT true | 발송 대상 여부 |
+| failureCount | integer | DEFAULT 0 | 발송 실패 누적 수 |
+| failedAt | timestamp | - | 마지막 발송 실패 시각 |
+| lastUsedAt | timestamp | - | 마지막 발송 성공 시각 |
+| createdAt | timestamp | DEFAULT NOW() | 구독 생성 일시 |
+| updatedAt | timestamp | UPDATED AT | 구독 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `endpoint`
+- INDEX: `(userId, enabled)`, `updatedAt`
+- CHECK: `failureCount >= 0`
+
+#### webauthn_credentials (패스키 인증 정보)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| userId | text | FK → users.id | 소유 사용자 ID |
+| credentialId | text | UNIQUE | WebAuthn credential ID |
+| publicKey | text | NOT NULL | WebAuthn public key |
+| counter | integer | DEFAULT 0 | replay 방지 counter |
+| transports | text | - | authenticator transports JSON |
+| deviceType | text | - | singleDevice / multiDevice |
+| backedUp | boolean | DEFAULT false | multi-device credential backup 여부 |
+| name | text | - | 사용자 표시 이름 |
+| lastUsedAt | timestamp | - | 마지막 사용 시각 |
+| createdAt | timestamp | DEFAULT NOW() | 등록 일시 |
+| updatedAt | timestamp | UPDATED AT | 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `credentialId`
+- INDEX: `userId`, `lastUsedAt`
+- CHECK: `counter >= 0`
+
+#### webauthn_challenges (패스키 challenge)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| userId | text | FK → users.id | challenge 소유 사용자 ID |
+| email | text | - | 로그인 시 이메일 |
+| type | text | registration/authentication | challenge 용도 |
+| challenge | text | UNIQUE | WebAuthn challenge |
+| expiresAt | timestamp | NOT NULL | 만료 시각 |
+| consumedAt | timestamp | - | 사용 완료 시각 |
+| createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
+
+**인덱스**:
+- UNIQUE: `challenge`
+- INDEX: `(userId, type, expiresAt)`, `(email, type, expiresAt)`, `expiresAt`
+- CHECK: `type IN ('registration', 'authentication')`
+
+#### achievement_definitions (업적 정의)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| code | text | UNIQUE | 업적 코드 |
+| title | text | NOT NULL | 표시 제목 |
+| description | text | NOT NULL | 표시 설명 |
+| category | text | NOT NULL | prediction / accuracy / profit / volume / community |
+| icon | text | NOT NULL | UI 표시용 짧은 아이콘 텍스트 |
+| threshold | integer | CHECK > 0 | 달성 기준값 |
+| rewardDpmm | integer | DEFAULT 0 | 향후 보상용 DPMM metadata |
+| isActive | boolean | DEFAULT true | 노출/집계 여부 |
+| sortOrder | integer | DEFAULT 0 | 노출 순서 |
+| createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
+| updatedAt | timestamp | UPDATED AT | 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `code`
+- INDEX: `(category, isActive)`, `sortOrder`
+
+#### user_achievements (사용자 업적 진행률)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| userId | text | FK → users.id | 사용자 ID |
+| achievementId | text | FK → achievement_definitions.id | 업적 정의 ID |
+| progress | integer | CHECK >= 0 | 현재 진행값 |
+| unlockedAt | timestamp | - | 달성 시각 |
+| createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
+| updatedAt | timestamp | UPDATED AT | 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `(userId, achievementId)`
+- INDEX: `(userId, unlockedAt)`, `achievementId`
+
+#### level_definitions (레벨 정의)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| level | integer | UNIQUE, CHECK > 0 | 레벨 번호 |
+| title | text | NOT NULL | 레벨 이름 |
+| minXp | integer | CHECK >= 0 | 해당 레벨 최소 XP |
+| rewardDpmm | integer | DEFAULT 0 | 레벨 달성 보상 DPMM |
+| isActive | boolean | DEFAULT true | 노출/집계 여부 |
+| createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
+| updatedAt | timestamp | UPDATED AT | 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `level`
+- INDEX: `minXp`, `isActive`
+
+#### user_levels (사용자 레벨 snapshot)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| userId | text | FK → users.id, UNIQUE | 사용자 ID |
+| xp | integer | CHECK >= 0 | 누적 XP |
+| level | integer | CHECK > 0 | 현재 레벨 |
+| rewardedLevel | integer | CHECK > 0 | 보상 수령 완료 레벨 |
+| lastCalculatedAt | timestamp | DEFAULT NOW() | 마지막 XP 계산 시각 |
+| createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
+| updatedAt | timestamp | UPDATED AT | 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `userId`
+- INDEX: `level`, `xp`
+
+#### season_events (시즌 이벤트)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| code | text | UNIQUE | 시즌 코드 |
+| title | text | NOT NULL | 표시 제목 |
+| description | text | NOT NULL | 표시 설명 |
+| type | text | monthly / quarterly | 시즌 유형 |
+| status | text | active / completed / archived | 상태 |
+| startsAt | timestamp | NOT NULL | 시작 시각 |
+| endsAt | timestamp | NOT NULL | 종료 시각 |
+| rewardDpmm | integer | DEFAULT 0 | 시즌 보상 pool metadata |
+| sortOrder | integer | DEFAULT 0 | 노출 순서 |
+| createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
+| updatedAt | timestamp | UPDATED AT | 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `code`
+- INDEX: `(type, startsAt)`, `(status, startsAt, endsAt)`, `sortOrder`
+
+#### user_season_progress (사용자 시즌 점수)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| userId | text | FK → users.id | 사용자 ID |
+| seasonId | text | FK → season_events.id | 시즌 ID |
+| score | integer | CHECK >= 0 | 시즌 점수 |
+| predictionCount | integer | CHECK >= 0 | 시즌 예측 수 |
+| winCount | integer | CHECK >= 0 | 시즌 적중 수 |
+| stakeAmount | integer | CHECK >= 0 | 시즌 참여 DPMM |
+| profitAmount | integer | - | 시즌 정산 손익 |
+| commentCount | integer | CHECK >= 0 | 시즌 댓글 수 |
+| lastCalculatedAt | timestamp | DEFAULT NOW() | 마지막 계산 시각 |
+| createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
+| updatedAt | timestamp | UPDATED AT | 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `(userId, seasonId)`
+- INDEX: `(seasonId, score)`, `userId`
+
+#### shop_items (아이템샵 catalog)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| code | text | UNIQUE | 아이템 코드 |
+| name | text | NOT NULL | 표시 이름 |
+| description | text | NOT NULL | 설명 |
+| category | text | profile_theme / badge / emote | 아이템 유형 |
+| rarity | text | common / rare / epic | 희귀도 |
+| priceDpmm | integer | CHECK >= 0 | 구매 가격 |
+| previewText | text | NOT NULL | 미리보기 텍스트 |
+| sortOrder | integer | DEFAULT 0 | 노출 순서 |
+| isActive | boolean | DEFAULT true | 판매 여부 |
+| createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
+| updatedAt | timestamp | UPDATED AT | 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `code`
+- INDEX: `(category, sortOrder)`, `isActive`
+
+#### user_shop_items (사용자 보유 아이템)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| userId | text | FK → users.id | 사용자 ID |
+| itemId | text | FK → shop_items.id | 아이템 ID |
+| isEquipped | boolean | DEFAULT false | 장착 여부 |
+| purchasedAt | timestamp | DEFAULT NOW() | 구매 시각 |
+| updatedAt | timestamp | UPDATED AT | 갱신 일시 |
+
+**인덱스**:
+- UNIQUE: `(userId, itemId)`
+- INDEX: `(userId, isEquipped)`, `itemId`
 
 #### accounts (OAuth 계정)
 
@@ -441,13 +775,14 @@ NextAuth.js 세션 관리 (현재 JWT 전략 사용으로 미사용)
 |--------|------|----------|------|
 | id | text | PRIMARY KEY | UUID |
 | marketId | text | FK → markets.id | 마켓 ID |
-| title | text | NOT NULL | 옵션 제목 (YES/NO 등) |
+| title | text | NOT NULL | 옵션 제목 (마켓당 2-6개) |
 | totalPredictions | integer | DEFAULT 0 | 총 예측 수 |
 | totalAmount | integer | DEFAULT 0 | 총 베팅 금액 (DPMM) |
 | createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
 
 **인덱스**:
 - PRIMARY KEY: `id`
+- UNIQUE: `(marketId, title)`
 - INDEX: `marketId`
 
 #### predictions (사용자 예측)
@@ -458,7 +793,8 @@ NextAuth.js 세션 관리 (현재 JWT 전략 사용으로 미사용)
 | userId | text | FK → users.id | 사용자 ID |
 | marketId | text | FK → markets.id | 마켓 ID |
 | optionId | text | FK → market_options.id | 선택 옵션 ID |
-| amount | integer | NOT NULL | 베팅 금액 (DPMM) |
+| amount | integer | NOT NULL | 현재 남은 베팅 금액 (DPMM) |
+| liquidatedAmount | integer | DEFAULT 0 | 누적 부분 청산 금액 |
 | createdAt | timestamp | DEFAULT NOW() | 예측 일시 |
 | resolved | integer | DEFAULT 0 | 결과 (0: 대기, 1: 승리, -1: 패배) |
 | payout | integer | DEFAULT 0 | 지급액 (DPMM) |
@@ -467,6 +803,60 @@ NextAuth.js 세션 관리 (현재 JWT 전략 사용으로 미사용)
 - PRIMARY KEY: `id`
 - INDEX: `userId`, `marketId`, `optionId`
 - COMPOSITE INDEX: `(userId, marketId)` - 중복 베팅 방지
+
+#### position_listings (포지션 2차 거래)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| sellerId | text | FK → users.id | 판매자 ID |
+| buyerId | text | FK → users.id | 구매자 ID |
+| predictionId | text | FK → predictions.id | 양도 대상 포지션 |
+| marketId | text | FK → markets.id | 마켓 ID |
+| optionId | text | FK → market_options.id | 선택 옵션 ID |
+| amount | integer | NOT NULL | 판매 등록 시점 포지션 금액 |
+| price | integer | NOT NULL | 판매가 |
+| status | text | DEFAULT active | active / sold / cancelled |
+| createdAt | timestamp | DEFAULT NOW() | 판매 등록 일시 |
+| soldAt | timestamp | - | 판매 완료 일시 |
+| cancelledAt | timestamp | - | 판매 취소 일시 |
+
+**인덱스**:
+- PRIMARY KEY: `id`
+- UNIQUE PARTIAL: `predictionId WHERE status = active`
+- INDEX: `sellerId`, `buyerId`, `predictionId`, `(marketId, status, createdAt)`
+
+#### market_price_snapshots (마켓 가격 스냅샷)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| marketId | text | FK → markets.id | 마켓 ID |
+| optionId | text | FK → market_options.id | 선택 옵션 ID |
+| probabilityBps | integer | 0~10000 | 옵션 확률. 10000 = 100% |
+| optionAmount | integer | NOT NULL | 스냅샷 시점 옵션 총액 |
+| totalAmount | integer | NOT NULL | 스냅샷 시점 마켓 총액 |
+| source | text | NOT NULL | prediction_stake / prediction_liquidation 등 |
+| createdAt | timestamp | DEFAULT NOW() | 스냅샷 생성 일시 |
+
+**인덱스**:
+- PRIMARY KEY: `id`
+- INDEX: `(marketId, createdAt)`, `(optionId, createdAt)`, `source`
+
+#### market_amm_configs (AMM 설정)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | text | PRIMARY KEY | UUID |
+| marketId | text | UNIQUE, FK → markets.id | 마켓 ID |
+| enabled | boolean | DEFAULT true | AMM quote layer 사용 여부 |
+| virtualLiquidity | integer | DEFAULT 5000 | 옵션별 가상 유동성 |
+| createdAt | timestamp | DEFAULT NOW() | 생성 일시 |
+| updatedAt | timestamp | AUTO UPDATE | 수정 일시 |
+
+**인덱스**:
+- UNIQUE: `marketId`
+- INDEX: `enabled`
 
 ### 4.3 주요 쿼리 패턴
 
@@ -681,6 +1071,9 @@ const filteredMarkets = await db.select()
 - 각 옵션의 현재 확률
 - 총 베팅액, 참여자 수
 - 사용자의 예측 참여 폼
+- 참여한 포지션의 부분 청산 폼
+- 판매 등록된 포지션 2차 거래 목록
+- 옵션별 가격 차트
 
 **확률 계산**:
 ```typescript
@@ -692,7 +1085,78 @@ const yesPercent = total > 0 ? (yesTotal / total) * 100 : 50
 const noPercent = total > 0 ? (noTotal / total) * 100 : 50
 ```
 
-#### 5.2.3 예측 참여
+#### 5.2.3 부분 청산
+
+**파일**: `app/markets/[id]/actions.ts`
+
+**정책**:
+- active, hidden=false, 마감 전 마켓에서만 가능
+- 본인 unresolved prediction만 청산 가능
+- 청산 후 최소 100 DPMM은 포지션에 남겨야 함
+- 청산 금액의 1%를 수수료로 fee-burn account에 기록
+
+**데이터 변경**:
+- `prediction.amount` 감소
+- `prediction.liquidatedAmount` 증가
+- `market_options.totalAmount` 감소
+- 사용자 DPMM 잔액 증가
+- `prediction_liquidation`, `prediction_liquidation_fee` ledger 기록
+
+#### 5.2.4 포지션 양도
+
+**파일**: `app/markets/[id]/actions.ts`
+
+**정책**:
+- active, hidden=false, 마감 전 마켓에서만 가능
+- 판매자는 본인 unresolved prediction 전체를 고정가로 등록
+- 포지션당 active 판매 등록은 하나만 허용
+- 구매자는 같은 마켓에 기존 포지션이 없어야 함
+- 구매 시 `prediction.userId`가 구매자로 이전됨
+- 판매가의 1%를 수수료로 fee-burn account에 기록
+
+**데이터 변경**:
+- `position_listings` 생성 / sold / cancelled 상태 관리
+- 구매자 DPMM 잔액 차감
+- 판매자 DPMM 잔액 증가
+- `prediction.userId`를 구매자로 변경
+- `position_purchase`, `position_sale`, `position_sale_fee` ledger 기록
+- 판매자에게 `position_sold` 알림 생성
+
+#### 5.2.5 가격 차트
+
+**파일**:
+- `lib/markets/price-snapshots.ts`
+- `app/markets/[id]/MarketPriceChart.tsx`
+- `app/markets/[id]/MarketLiveRefresh.tsx`
+
+**정책**:
+- 예측 참여와 부분 청산처럼 확률을 바꾸는 이벤트 후 option별 스냅샷 기록
+- `probabilityBps`는 10000 기준 정수로 저장
+- 마켓 상세 페이지는 최근 스냅샷을 SVG 차트로 표시
+- active, hidden=false, 마감 전 마켓은 30초 간격으로 `router.refresh()` 실행
+
+**제약사항**:
+- WebSocket/SSE push는 아직 미도입
+- full share-based payout AMM과 liquidity pool은 별도 단계
+
+#### 5.2.6 AMM 가격 레이어
+
+**파일**:
+- `lib/markets/amm.ts`
+- `app/markets/[id]/PredictionForm.tsx`
+
+**정책**:
+- 옵션별 실제 베팅액에 `virtualLiquidity`를 더해 확률을 계산
+- 기본 가상 유동성은 옵션당 5,000 DPMM
+- 예측 참여 폼은 입력 금액 기준 AMM 평균가와 예상 확률 변화를 표시
+- 마켓 목록, 랜딩, 상세의 확률 표시는 AMM 확률을 사용
+
+**제약사항**:
+- 정산은 기존 pool 기반 payout을 유지
+- 예측 구매가와 정산 payout을 완전 분리한 MVP 단계
+- collateralized share payout AMM은 별도 경제 모델 승인이 필요
+
+#### 5.2.7 예측 참여
 
 **파일**: `app/markets/[id]/actions.ts`
 
@@ -712,9 +1176,9 @@ const noPercent = total > 0 ? (noTotal / total) * 100 : 50
 
 **제약사항**:
 - 한 마켓당 하나의 포지션만 가능
-- 베팅 후 취소/변경 불가 (MVP)
+- active, hidden=false, 마감 전 마켓에서는 일부 stake 청산 가능
 
-#### 5.2.4 마켓 토론 댓글
+#### 5.2.8 마켓 토론 댓글
 
 **파일**: `app/markets/[id]/actions.ts`
 
@@ -730,7 +1194,7 @@ const noPercent = total > 0 ? (noTotal / total) * 100 : 50
 - 댓글 본문은 React 렌더링 escape와 `whitespace-pre-wrap`으로 표시
 - 삭제/블라인드 등 고급 moderation은 이후 관리자 기능에서 확장
 
-#### 5.2.5 결과 확정 (Admin)
+#### 5.2.9 결과 확정 (Admin)
 
 **파일**: `app/admin/markets/[id]/resolve/actions.ts`
 
@@ -771,7 +1235,7 @@ for (const prediction of winnerPredictions) {
 - 설명 (description)
 - 카테고리 (category)
 - 마감 일시 (endsAt)
-- 옵션 2개 (기본: YES, NO)
+- 선택지 2-6개 (기본: YES, NO)
 
 **자동 설정**:
 - creatorId: 현재 로그인한 관리자
@@ -803,6 +1267,67 @@ for (const prediction of winnerPredictions) {
 - market_options 자동 삭제
 - predictions 자동 삭제 (FK ON DELETE CASCADE)
 
+#### 5.3.4 마켓 통계
+
+**파일**: `app/admin/stats/markets/page.tsx`
+
+**데이터 범위**:
+- 전체 마켓, 옵션, 예측 참여
+- resolved 마켓의 winningOptionId
+- 사용자별 고유/반복 참여
+
+**표시 정보**:
+- 전체 마켓, 활성/확정 마켓 수
+- 사용자 예측 정확도
+- 군중 예측 적중률 (마켓별 최다 베팅 옵션이 실제 승리 옵션이었는지)
+- 고유 참여자와 반복 참여율
+- 마켓 유동성, 정산 수수료 추정
+- 참여 규모/참여자 수 상위 마켓
+- 카테고리별 참여 DPMM 및 적중률
+- 확정 필요/마감 임박 운영 모니터링
+
+#### 5.3.5 트렌드 분석
+
+**파일**: `app/admin/stats/trends/page.tsx`
+
+**데이터 범위**:
+- 최근 7일과 이전 7일의 예측 참여
+- visible 마켓 댓글
+- 최근 생성 마켓과 활성 공개 마켓
+
+**표시 정보**:
+- 최근 예측 수와 참여 DPMM 증감
+- 최근 토론 반응
+- 인기 카테고리 trend score
+- 급상승 마켓
+- 활성 공개 마켓의 운영 기회 score
+- 카테고리 집중, 참여 증감, 콘텐츠 반응 해석
+
+#### 5.3.6 이상 거래 탐지
+
+**파일**:
+- `app/admin/stats/anomalies/page.tsx`
+- `lib/anomaly-detection.ts`
+
+**데이터 범위**:
+- 최근 24시간 공개 마켓 예측 참여와 이전 7일 기준 구간
+- 최근 DPMM ledger transaction 절대 변동액
+- pending/approved/submitted 출금 요청
+- 최근 포지션 listing 생성/판매/취소 신호
+- active 또는 최근 생성 마켓의 사용자별 stake 집중도
+
+**표시 정보**:
+- 전체 anomaly alert, severity별 수
+- 관찰 사용자 수, 최근 stake, 열린 출금 합계
+- prediction velocity, market concentration, ledger velocity, withdrawal pressure, position transfer velocity
+- alert별 score, severity, evidence, 회원 상세/근거 링크
+
+**운영 정책**:
+- admin-only route로 제공한다.
+- 외부 AI provider 없이 로컬 scoring model `local-anomaly-detector-v1`로 동작한다.
+- read-only 탐지 화면이며 계정 정지, 잔액 변경, 출금 거절을 자동 수행하지 않는다.
+- score는 수동 검토 우선순위이며 운영자는 회원 상세, 마켓, 출금 큐를 함께 확인한다.
+
 ### 5.4 내 활동 페이지
 
 **파일**: `app/app/page.tsx`
@@ -828,7 +1353,26 @@ for (const prediction of winnerPredictions) {
    - 획득/사용 내역
    - 일시, 금액, 사유
 
-### 5.5 순위표
+### 5.5 사용자 통계 대시보드
+
+**파일**: `app/app/stats/page.tsx`
+
+**데이터 범위**:
+- 현재 로그인한 활성 회원의 `predictions`
+- 연결된 `markets.category`, `market_options.title`
+- 사용자별 `dpmm_ledger_transactions` groupBy 집계
+
+**표시 정보**:
+- 총 예측 수, 진행 중 예측 수
+- 승률, 정산 수익률, 정산 손익
+- 현재 미정산 포지션 노출
+- 부분 청산 누적액
+- 예측 상태 분포
+- 최근 6개월 예측 추세
+- 카테고리별 참여 DPMM 및 승률
+- 선택지 성향 분포
+
+### 5.6 순위표
 
 **파일**: `app/leaderboard/page.tsx`
 
@@ -842,6 +1386,387 @@ for (const prediction of winnerPredictions) {
 - 닉네임
 - DPMM 잔액
 - 역할 배지 (관리자: 🔑, 테스트: 🧪)
+
+### 5.7 활동 피드
+
+**파일**: `app/feed/page.tsx`
+
+**데이터 범위**:
+- 현재 사용자가 팔로우한 활성 회원
+- hidden이 아닌 공개 마켓의 예측 참여
+- visible 상태의 마켓 댓글
+
+**표시 정보**:
+- 활동한 회원 프로필 링크
+- 마켓 상세 링크
+- 예측 옵션, 참여 DPMM, 정산 상태
+- 댓글 본문 일부와 작성 시각
+
+### 5.8 알림함
+
+**파일**: `app/notifications/page.tsx`
+
+**알림 발생 조건**:
+- 새 팔로워 발생
+- 사용자가 만든 마켓에 visible 댓글 등록
+
+**표시 정보**:
+- 읽지 않은 알림 수
+- 알림 타입, 제목, 발생 사용자, 생성 시각
+- 연결 대상 프로필/마켓 링크
+- 개별 읽음 및 전체 읽음 처리
+- 브라우저 푸시 알림 구독/해제 상태
+
+### 5.9 Web Push 알림
+
+**파일**:
+- `app/api/push/subscriptions/route.ts`
+- `app/notifications/PushNotificationSettings.tsx`
+- `lib/push.ts`
+- `public/sw.js`
+
+**구독 조건**:
+- 로그인한 active 사용자만 구독 등록/해제 가능
+- 브라우저가 Service Worker, PushManager, Notification API를 지원해야 함
+- 서버에 `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_PRIVATE_KEY` 설정 필요
+
+**발송 조건**:
+- 새 팔로워
+- 내가 만든 마켓의 새 댓글
+- 내 포지션 판매 완료
+
+**보안/운영 정책**:
+- VAPID private key는 서버 환경변수로만 사용
+- 사용자당 enabled subscription은 최근 10개로 제한
+- subscription endpoint는 사용자별로 저장하고 만료 응답(404/410) 시 비활성화
+- push click URL은 same-origin으로 제한하며 외부 URL은 `/notifications`로 fallback
+- DB transaction commit 이후에만 push delivery를 시도
+
+### 5.10 패스키 생체 인증
+
+**파일**:
+- `app/app/security/page.tsx`
+- `app/api/webauthn/register/options/route.ts`
+- `app/api/webauthn/register/verify/route.ts`
+- `app/api/webauthn/authenticate/options/route.ts`
+- `lib/webauthn.ts`
+
+**등록 조건**:
+- 로그인한 active 사용자만 등록 가능
+- 사용자당 최대 10개 credential
+- WebAuthn user verification required
+
+**로그인 조건**:
+- 이메일 입력 후 등록된 credential로 인증
+- rpID/origin은 `NEXTAUTH_URL`에서 파생하거나 `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGIN`으로 고정
+- challenge는 5분 TTL, 사용 후 `consumedAt` 처리
+
+**보안/운영 정책**:
+- private key나 biometric raw data는 서버에 저장하지 않음
+- credential public key, credential ID, counter만 저장
+- 인증 성공 시 credential counter와 `lastUsedAt` 갱신
+- passkey login은 기존 Credentials provider 안에서 처리해 JWT session 정책을 그대로 사용
+
+### 5.11 업적 시스템
+
+**파일**:
+- `app/app/achievements/page.tsx`
+- `lib/achievements.ts`
+- `prisma/migrations/0019_add_achievements/migration.sql`
+
+**업적 카테고리**:
+- prediction: 첫 예측, 10회/50회 참여
+- accuracy: 첫 적중, 3연승, 10연승
+- profit: 정산 손익 10,000 / 50,000 DPMM
+- volume: 누적 예측 참여 100,000 DPMM
+- community: 첫 댓글, 첫 팔로우
+
+**집계 방식**:
+- `/app/achievements` 접근 시 active 사용자 기준으로 idempotent progress를 갱신한다.
+- 업적 정의는 seed와 page evaluation에서 `code` 기준 upsert한다.
+- 연승은 정산된 예측만 생성일 순서로 계산하며, 미정산 예측은 streak에 반영하지 않는다.
+- 이번 slice에서는 DPMM 보상 지급을 하지 않고 `rewardDpmm` metadata만 유지한다.
+
+### 5.12 레벨 시스템
+
+**파일**:
+- `app/app/level/page.tsx`
+- `app/app/level/actions.ts`
+- `lib/levels.ts`
+- `prisma/migrations/0020_add_levels/migration.sql`
+
+**XP 소스**:
+- 예측 참여: 1회당 100 XP
+- 적중 보너스: 1승당 250 XP
+- 참여량: 누적 stake 100 DPMM당 1 XP
+- 정산 수익: 양수 정산 손익 50 DPMM당 1 XP
+- 토론 참여: visible 댓글 1개당 50 XP
+- 팔로우: 1명당 75 XP
+- 업적 달성: 달성 업적 1개당 150 XP
+
+**보상 정책**:
+- `/app/level` 조회는 XP/level snapshot만 idempotent 갱신한다.
+- DPMM 레벨 보상은 `보상 받기` action에서만 지급한다.
+- `user_levels.rewardedLevel` 조건부 update 후 ledger `level_reward`를 남겨 중복 수령을 방지한다.
+
+### 5.13 시즌 이벤트
+
+**파일**:
+- `app/app/seasons/page.tsx`
+- `lib/seasons.ts`
+- `prisma/migrations/0021_add_season_events/migration.sql`
+
+**시즌 유형**:
+- monthly: 매월 1일 00:00 UTC부터 다음 달 1일 00:00 UTC 전까지 집계
+- quarterly: 분기 첫 달 1일 00:00 UTC부터 다음 분기 첫 달 1일 00:00 UTC 전까지 집계
+
+**점수 산식**:
+- 예측 참여: 1회당 100점
+- 적중 예측: 1승당 300점
+- 참여량: stake 100 DPMM당 1점
+- 정산 수익: 양수 실현 손익 50 DPMM당 1점
+- 토론 참여: visible 댓글 1개당 75점
+
+**운영 정책**:
+- `/app/seasons` 조회 시 현재 monthly/quarterly 시즌 정의를 idempotent upsert한다.
+- 시즌 참가자는 시즌 기간 내 예측 또는 댓글 활동이 있는 사용자와 현재 사용자로 구성한다.
+- `user_season_progress`는 조회 시점에 snapshot으로 재계산하며 leaderboard는 score 내림차순 Top 10을 표시한다.
+- 이번 slice에서는 시즌 보상을 자동 지급하지 않고 `rewardDpmm` metadata만 유지한다.
+
+### 5.14 아이템샵
+
+**파일**:
+- `app/app/shop/page.tsx`
+- `app/app/shop/actions.ts`
+- `lib/shop.ts`
+- `prisma/migrations/0022_add_item_shop/migration.sql`
+
+**아이템 유형**:
+- profile_theme: 공개 프로필 Hero tone 변경
+- badge: 공개 프로필 이름 영역에 배지 표시
+- emote: 공개 프로필 cosmetic 영역에 짧은 문구 표시
+
+**구매 정책**:
+- catalog는 seed와 shop 조회 시 `code` 기준 idempotent upsert한다.
+- 구매는 active 사용자와 active 아이템만 허용한다.
+- `user_shop_items` unique `(userId, itemId)`로 중복 보유를 방지한다.
+- 구매 transaction은 inventory 생성, DPMM 잔액 차감, `item_purchase` ledger 기록을 원자적으로 처리한다.
+- 장착은 같은 category의 기존 장착을 해제한 뒤 새 아이템을 장착한다.
+
+### 5.15 AI 예측 추천
+
+**파일**:
+- `app/app/recommendations/page.tsx`
+- `lib/recommendations.ts`
+
+**추천 입력 신호**:
+- 사용자 예측 이력 기반 category affinity
+- active public market의 총 참여 DPMM, 참여자 수, 댓글 수
+- AMM 확률 기준 leading option confidence
+- 마감까지 남은 시간
+- 사용자가 아직 덜 탐색한 category novelty
+
+**운영 정책**:
+- 외부 AI provider 없이 로컬 scoring model `local-recommendation-v1`로 동작한다.
+- 로그인 active 사용자만 접근할 수 있다.
+- 사용자가 이미 예측한 active market은 추천에서 제외한다.
+- 추천 결과는 점수, 추천 선택지, risk level, 추천 참여액, 설명 가능한 score breakdown을 포함한다.
+- 추천 참여액은 DPMM 장부 잔액과 risk level 기준의 안내값이며 자동 stake를 만들지 않는다.
+
+### 5.16 트렌드 예측
+
+**파일**:
+- `app/app/trends/page.tsx`
+- `lib/trend-predictions.ts`
+
+**예측 입력 신호**:
+- 최근 7일과 이전 7일의 공개 마켓 예측 참여 수
+- 최근 7일과 이전 7일의 참여 DPMM 합계
+- 공개 댓글 증가량
+- active market 수와 신규 생성 market 수
+
+**운영 정책**:
+- 외부 AI provider 없이 로컬 scoring model `local-trend-forecast-v1`로 동작한다.
+- 로그인 active 사용자만 접근할 수 있다.
+- hidden market과 숨김 댓글은 trend signal에서 제외한다.
+- 결과는 category forecast, topic idea, rising active market으로 나뉜다.
+- 신규 마켓 주제 후보는 운영 참고용이며 자동 마켓 생성이나 자동 stake를 만들지 않는다.
+
+### 5.17 B2B 데이터 API
+
+**파일**:
+- `app/api/b2b/analytics/route.ts`
+- `lib/b2b/api-auth.ts`
+
+**인증**:
+- `Authorization: Bearer <key>` 또는 `x-api-key`
+- API key는 `B2B_API_KEYS`에 comma-separated 값으로 설정
+- API key가 비어 있어도 active admin session은 접근 가능
+- 익명 요청은 401, 비관리자 session은 403
+
+**쿼리 파라미터**:
+- `window`: `7d` / `14d` / `30d` (기본 `7d`)
+- `include_mock`: `true` / `1`이면 mock source 포함
+
+**응답 데이터**:
+- overview: 공개 마켓 수, 활성/확정 수, 예측 수, 고유 참여자 수, 총 참여 DPMM
+- trend: 최근 구간과 이전 구간의 예측/참여 DPMM/comment 증감
+- categories: 카테고리별 마켓 수, 예측 수, 고유 참여자 수, 참여 DPMM
+- markets: 상위 공개 마켓 summary 최대 50개
+
+**프라이버시 정책**:
+- hidden 마켓 제외
+- 기본값은 mock source 제외
+- user id, email, wallet address, comment body, raw ledger row 미포함
+
+### 5.18 다국어 지원
+
+**파일**:
+- `lib/i18n.ts`
+- `lib/i18n-server.ts`
+- `app/locale/actions.ts`
+- `components/LanguageSwitcher.tsx`
+- `components/Header.tsx`
+- `app/page.tsx`
+- `app/layout.tsx`
+- `lib/i18n-server.ts`
+- `lib/i18n.ts`
+
+**지원 locale**:
+- `ko` 기본값
+- `en` 영어
+- `ja` 일본어
+
+**동작 방식**:
+- URL 구조는 유지하고 `dopameme_locale` cookie로 현재 locale을 저장한다.
+- Header의 language switcher가 Server Action으로 cookie를 설정한 뒤 현재 경로로 redirect한다.
+- 공개 랜딩 페이지와 전역 Header 주요 문구를 locale별 copy table에서 렌더링한다.
+- root layout의 `<html lang>`은 같은 locale cookie를 기준으로 `ko`, `en`, `ja`를 반영한다.
+- 공개 랜딩, 마켓 목록, 로그인, 회원가입의 title/description과 OpenGraph/Twitter metadata는 같은 locale cookie를 기준으로 생성한다.
+- 날짜 표기는 locale별 `Intl.DateTimeFormat` locale을 사용한다.
+
+**범위**:
+- 로그인 전 공개 진입 경험을 우선 현지화한다.
+- 로그인 이후 기능 화면 전체 번역, 타임존, 현지화 콘텐츠는 Phase 8 후속 범위로 둔다.
+
+### 5.19 해외 이슈 마켓
+
+**파일**:
+- `prisma/schema.prisma`
+- `prisma/migrations/0023_add_market_region_metadata/migration.sql`
+- `lib/markets/regions.ts`
+- `app/admin/markets/create/CreateMarketForm.tsx`
+- `app/admin/markets/create/actions.ts`
+- `app/admin/markets/page.tsx`
+- `app/markets/page.tsx`
+- `app/markets/market-list.tsx`
+- `app/markets/[id]/page.tsx`
+- `scripts/generate-markets.ts`
+
+**DB metadata**:
+- `Market.region`: `KR`, `US`, `JP`, `EU`, `GLOBAL`
+- `Market.languageCode`: `ko`, `en`, `ja`
+- 기존 마켓은 migration default로 `KR` / `ko`를 가진다.
+
+**운영 흐름**:
+- 관리자 마켓 생성 화면에서 대상 지역과 콘텐츠 언어를 지정한다.
+- 관리자 마켓 관리 화면에서 지역 필터와 지역/언어 badge를 제공한다.
+- 공개 마켓 목록은 카테고리 필터와 지역 필터를 함께 제공한다.
+- 한국 외 지역 마켓은 카드와 상세 화면에서 `해외 이슈` badge로 표시한다.
+- mock seed에는 미국, 일본, 유럽, 글로벌 예시 마켓을 포함한다.
+
+**범위**:
+- 지역 metadata는 탐색/관리/표시에 사용하며 예측, AMM, 정산, ledger 로직은 기존 계약을 유지한다.
+- 지역별 콘텐츠 자동 번역은 후속 범위로 둔다.
+
+### 5.20 타임존 지원
+
+**파일**:
+- `prisma/schema.prisma`
+- `prisma/migrations/0024_add_market_time_zone/migration.sql`
+- `lib/markets/regions.ts`
+- `app/admin/markets/create/CreateMarketForm.tsx`
+- `app/admin/markets/create/actions.ts`
+- `app/admin/markets/page.tsx`
+- `app/markets/market-list.tsx`
+- `app/markets/[id]/page.tsx`
+- `app/page.tsx`
+- `scripts/generate-markets.ts`
+
+**DB metadata**:
+- `Market.timeZone`: IANA timezone string
+- 기본값은 `Asia/Seoul`
+- 허용 목록: `Asia/Seoul`, `America/New_York`, `America/Los_Angeles`, `Asia/Tokyo`, `Europe/Brussels`, `Europe/London`, `UTC`
+
+**동작 방식**:
+- 관리자 마켓 생성 화면에서 마감 타임존을 지정한다.
+- 지역을 바꾸면 기본 언어와 기본 타임존이 함께 변경된다.
+- `datetime-local` 입력값은 선택한 타임존의 현지 시각으로 해석해 UTC `endsAt`으로 저장한다.
+- 공개 목록, 랜딩 카드, 상세 화면, 관리자 목록은 마켓별 타임존 기준 현지 마감 시각과 약어를 표시한다.
+- seed는 기존 mock market의 timeZone metadata도 idempotent하게 보정한다.
+
+**범위**:
+- 타임존은 마켓 마감 입력과 표시 기준으로 사용한다.
+- 사용자별 개인 타임존 설정과 지역별 콘텐츠 자동 번역은 후속 범위로 둔다.
+
+### 5.21 현지화 컨텐츠
+
+**파일**:
+- `lib/i18n.ts`
+- `lib/markets/regions.ts`
+- `app/page.tsx`
+- `app/markets/page.tsx`
+- `app/markets/market-list.tsx`
+- `app/markets/[id]/page.tsx`
+- `app/login/page.tsx`
+- `app/login/LoginForm.tsx`
+- `app/signup/page.tsx`
+- `app/signup/SignupForm.tsx`
+- `scripts/smoke-test.mjs`
+
+**동작 방식**:
+- `dopameme_locale` cookie를 기준으로 공개 마켓 목록의 제목, 설명, 필터, badge, empty state, footer 문구를 현지화한다.
+- `dopameme_locale` cookie를 기준으로 로그인/회원가입 진입 화면의 hero, form label, CTA, agreement, footer 문구를 현지화한다.
+- 카테고리와 지역 label은 한국어, 영어, 일본어 display label을 제공한다.
+- 랜딩의 진행중 마켓과 공개 마켓 목록은 선택 locale과 같은 `Market.languageCode` 마켓을 우선 정렬한다.
+- 마켓 목록과 상세 화면은 locale별 날짜/숫자 표기를 사용한다.
+- smoke test는 영어와 일본어 locale의 `/markets`, `/login`, `/signup` 렌더링, locale별 `<html lang>`, localized metadata를 확인한다.
+
+**범위**:
+- 현지화는 공개 탐색/상세 상단/랜딩 마켓 카드의 presentation layer에 적용한다.
+- DB에 저장된 마켓 본문은 관리자가 입력한 원문을 유지하며 자동 번역하지 않는다.
+- 로그인 이후 앱 전체 번역은 별도 후속 범위로 둔다.
+
+### 5.22 공개 SEO와 크롤링 정책
+
+**파일**:
+- `app/layout.tsx`
+- `app/page.tsx`
+- `app/markets/page.tsx`
+- `app/markets/[id]/page.tsx`
+- `app/robots.ts`
+- `app/sitemap.ts`
+- `app/.well-known/security.txt/route.ts`
+- `app/login/page.tsx`
+- `app/signup/page.tsx`
+- `lib/seo.ts`
+- `scripts/smoke-test.mjs`
+
+**동작 방식**:
+- `/robots.txt`에서 공개 route는 허용하고, 관리자/인증 앱/API/알림/피드/회원 route는 disallow한다.
+- `/sitemap.xml`은 홈, 마켓 목록, 소개, 약관, 개인정보처리방침과 visible active/resolved 마켓 상세 route를 노출한다.
+- sitemap의 마켓 상세 route는 `hidden=false`이고 `status`가 `active` 또는 `resolved`인 마켓만 포함한다.
+- `/.well-known/security.txt`는 public route로 보안 연락, 만료일, 언어, canonical metadata를 제공한다.
+- `/login`과 `/signup`은 noindex/nofollow metadata를 가진다.
+- root metadata의 placeholder Google verification 값은 제거한다.
+- `/`는 `WebSite`/`Organization` JSON-LD를 포함한다.
+- `/markets`는 canonical/OpenGraph/Twitter metadata와 `ItemList` JSON-LD를 포함한다.
+- `/markets/[id]`는 public visible 마켓만 dynamic metadata를 생성하며, hidden/비공개 마켓은 noindex fallback을 사용한다.
+- smoke test는 robots, sitemap, security.txt, public JSON-LD, market detail OpenGraph/Twitter metadata 응답을 확인한다.
+
+**범위**:
+- cookie 기반 locale 구조이므로 이번 slice에서는 hreflang route를 만들지 않는다.
+- user profile, app dashboard, admin, API 응답은 검색 색인 대상에서 제외한다.
 
 ---
 
@@ -1064,13 +1989,84 @@ AUTH_SECRET=your-auth-secret-key
 AUTH_GOOGLE_ID=your-google-oauth-client-id
 AUTH_GOOGLE_SECRET=your-google-oauth-client-secret
 NEXTAUTH_URL=http://localhost:3000
+
+# Optional B2B API keys
+B2B_API_KEYS=comma-separated-random-keys
+
+# Optional Web Push
+WEB_PUSH_VAPID_PUBLIC_KEY=your-vapid-public-key
+WEB_PUSH_VAPID_PRIVATE_KEY=your-vapid-private-key
+WEB_PUSH_CONTACT=https://dopameme.kr
+
+# Optional WebAuthn/passkey
+WEBAUTHN_ORIGIN=https://dopameme.kr
+WEBAUTHN_RP_ID=dopameme.kr
 ```
 
 **주의사항**:
 - `.env.local` 파일 절대 커밋 금지
 - Vercel 환경 변수 설정에서 프로덕션 값 입력
+- `B2B_API_KEYS`는 32자 이상 랜덤 문자열을 사용하고 외부 파트너별로 분리 발급
+- `WEB_PUSH_VAPID_PRIVATE_KEY`는 client bundle에 노출하면 안 됨
+- `WEBAUTHN_ORIGIN`, `WEBAUTHN_RP_ID`는 운영 도메인과 일치해야 함
 
-### 7.4 SQL Injection 방지
+### 7.4 공통 보안 헤더
+
+**파일**:
+- `next.config.ts`
+- `scripts/smoke-test.mjs`
+
+**응답 헤더**:
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()`
+- private/auth/API/user route: `X-Robots-Tag: noindex, nofollow`
+
+**캐시 헤더**:
+- `/sw.js`: `Cache-Control: public, max-age=0, must-revalidate`
+- `/manifest.webmanifest`: `Cache-Control: public, max-age=0, must-revalidate`
+- `/icon.svg`: `Cache-Control: public, max-age=0, must-revalidate`
+- `/.well-known/security.txt`: `Cache-Control: public, max-age=86400, must-revalidate`
+- `/_next/static/*`: `Cache-Control: public, max-age=31536000, immutable`
+- cookie-locale HTML route: `Cache-Control: private, no-store, max-age=0, must-revalidate`
+- 인증/사용자별 route: `Cache-Control: private, no-store, max-age=0, must-revalidate`
+
+**no-store 적용 route**:
+- `/`
+- `/about`
+- `/admin/:path*`
+- `/api/:path*`
+- `/app/:path*`
+- `/feed/:path*`
+- `/leaderboard`
+- `/login`
+- `/markets`
+- `/markets/:path*`
+- `/notifications/:path*`
+- `/offline`
+- `/privacy`
+- `/signup`
+- `/terms`
+- `/users/:path*`
+
+**noindex 적용 route**:
+- `/admin/:path*`
+- `/api/:path*`
+- `/app/:path*`
+- `/feed/:path*`
+- `/leaderboard`
+- `/login`
+- `/notifications/:path*`
+- `/signup`
+- `/users/:path*`
+
+**운영 정책**:
+- Google OAuth, passkey, Web Push와 충돌 가능성이 있는 엄격 CSP/COOP/CORP는 이번 slice에서 적용하지 않는다.
+- public market detail route는 sitemap/OpenGraph/JSON-LD 색인 대상이므로 `X-Robots-Tag` noindex 적용에서 제외한다.
+- smoke test는 landing page 보안/cache header, PWA public asset cache 정책, service worker script cache 정책, login/API no-store와 noindex header를 검증한다.
+
+### 7.5 SQL Injection 방지
 
 **Drizzle ORM Parameterized Queries**:
 
@@ -1084,19 +2080,20 @@ const user = await db.select()
 await db.execute(sql`SELECT * FROM users WHERE email = '${userInput}'`)
 ```
 
-### 7.5 XSS 방지
+### 7.6 XSS 방지
 
 **React 자동 이스케이핑**:
 - React는 기본적으로 모든 텍스트를 이스케이핑
-- `dangerouslySetInnerHTML` 사용 금지
+- 사용자 입력 HTML에는 `dangerouslySetInnerHTML`을 사용하지 않는다.
+- 검색엔진용 JSON-LD는 `lib/seo.ts`의 escaping helper로 `<` 문자를 이스케이프한 뒤 제한적으로 삽입한다.
 
-### 7.6 CSRF 방지
+### 7.7 CSRF 방지
 
 **NextAuth.js 내장 CSRF 보호**:
 - 모든 POST 요청에 CSRF 토큰 자동 포함
 - 서버에서 토큰 검증
 
-### 7.7 Rate Limiting (향후 구현)
+### 7.8 Rate Limiting (향후 구현)
 
 - 로그인 시도: 5회/분
 - 예측 참여: 10회/분
@@ -1239,6 +2236,12 @@ AUTH_SECRET=your-secret-key
 AUTH_GOOGLE_ID=your-google-id
 AUTH_GOOGLE_SECRET=your-google-secret
 NEXTAUTH_URL=http://localhost:3000
+B2B_API_KEYS=
+WEB_PUSH_VAPID_PUBLIC_KEY=
+WEB_PUSH_VAPID_PRIVATE_KEY=
+WEB_PUSH_CONTACT=https://dopameme.kr
+WEBAUTHN_ORIGIN=https://dopameme.kr
+WEBAUTHN_RP_ID=dopameme.kr
 ```
 
 #### 4. 데이터베이스 마이그레이션
@@ -1401,7 +2404,7 @@ export const db = drizzle(client, {
 - ✅ 사용자 인증 (이메일/비밀번호, Google OAuth)
 - ✅ 포인트 시스템 (DPMM)
 - ✅ 예측 마켓 생성 (관리자)
-- ✅ 예측 참여 (YES/NO)
+- ✅ 예측 참여 (2-6개 선택지)
 - ✅ 결과 확정 및 보상 분배
 - ✅ 내 활동 페이지
 - ✅ 순위표
@@ -1410,55 +2413,56 @@ export const db = drizzle(client, {
 ### Phase 2: 커뮤니티 (Q1 2025)
 - [x] 마켓별 댓글 시스템
 - [x] 사용자 프로필 페이지
-- [ ] 팔로우/팔로워 기능
-- [ ] 활동 피드 (타임라인)
-- [ ] 알림 시스템
+- [x] 팔로우/팔로워 기능
+- [x] 활동 피드 (타임라인)
+- [x] 알림 시스템
 
 ### Phase 3: 고급 기능 (Q2 2025)
-- [ ] 멀티 옵션 마켓 (3개 이상 선택지)
-- [ ] 부분 청산 (베팅 금액 일부 회수)
-- [ ] 포지션 양도 (2차 거래 시장)
-- [ ] AMM (Automated Market Maker) 도입
-- [ ] 실시간 가격 차트
+- [x] 멀티 옵션 마켓 (3개 이상 선택지)
+- [x] 부분 청산 (베팅 금액 일부 회수)
+- [x] 포지션 양도 (2차 거래 시장)
+- [x] AMM 가격/확률 레이어 (virtual liquidity MVP)
+- [x] 실시간 가격 차트
 
 ### Phase 4: 데이터 & 분석 (Q3 2025)
-- [ ] 사용자 통계 대시보드
+- [x] 사용자 통계 대시보드
   - 승률, 수익률, 예측 분포
-- [ ] 마켓 통계
+- [x] 마켓 통계
   - 예측 정확도, 참여자 분석
-- [ ] 트렌드 분석
+- [x] 트렌드 분석
   - 인기 카테고리, 급상승 마켓
-- [ ] B2B 데이터 API
+- [x] B2B 데이터 API
 
 ### Phase 5: 모바일 앱 (Q4 2025)
-- [ ] React Native 앱
-- [ ] 푸시 알림
-- [ ] 생체 인증
-- [ ] 오프라인 모드
+- [x] 모바일 앱 기반 (PWA 설치/오프라인 fallback)
+- [x] 푸시 알림 (PWA Web Push)
+- [x] 오프라인 모드 (공개 페이지 cache/상태 배너)
+- [x] 생체 인증 (WebAuthn/passkey)
+- [x] React Native 앱 shell (Expo/WebView)
 
 ### Phase 6: 게임화 강화 (2026)
-- [ ] 업적 시스템
+- [x] 업적 시스템
   - 첫 예측, 10연승, 누적 수익 등
-- [ ] 레벨 시스템
+- [x] 레벨 시스템
   - 경험치 획득, 레벨업 보상
-- [ ] 시즌 이벤트
+- [x] 시즌 이벤트
   - 월간/분기 챔피언십
-- [ ] 아이템샵
+- [x] 아이템샵
   - 프로필 테마, 이모티콘, 뱃지
 
 ### Phase 7: AI & 머신러닝 (2026)
-- [ ] AI 예측 추천
+- [x] AI 예측 추천
   - 과거 데이터 기반 예측 제안
-- [ ] 트렌드 예측
+- [x] 트렌드 예측
   - 인기 있을 마켓 주제 추천
-- [ ] 이상 거래 탐지
+- [x] 이상 거래 탐지
   - 어뷰징 방지 시스템
 
 ### Phase 8: 글로벌 확장 (2027)
-- [ ] 다국어 지원 (영어, 일본어)
-- [ ] 해외 이슈 마켓
-- [ ] 타임존 지원
-- [ ] 현지화 컨텐츠
+- [x] 다국어 지원 (영어, 일본어)
+- [x] 해외 이슈 마켓
+- [x] 타임존 지원
+- [x] 현지화 컨텐츠
 
 ---
 
@@ -1471,6 +2475,7 @@ export const db = drizzle(client, {
 | DPMM | 도파밈 포인트. 현금화 불가능한 게임 내 재화 |
 | 밈 마켓 | 사용자들이 예측에 참여할 수 있는 이벤트 |
 | 바이너리 옵션 | YES 또는 NO 두 가지 선택지만 있는 예측 |
+| 멀티 옵션 | 3개 이상 6개 이하 선택지를 가진 예측 |
 | 해결(Resolve) | 마켓의 실제 결과를 확정하는 행위 |
 | 포지션 | 사용자가 특정 옵션에 베팅한 상태 |
 | 수수료 | 승리 시 플랫폼이 부과하는 1% 수수료 |
@@ -1490,6 +2495,11 @@ export const db = drizzle(client, {
 - `createMarket(formData)` - 마켓 생성
 - `toggleHidden(marketId)` - 가리기/보이기
 - `deleteMarket(marketId)` - 마켓 삭제
+
+#### B2B REST API
+- `GET /api/b2b/analytics?window=7d` - 비식별 aggregate analytics JSON
+- 인증: `Authorization: Bearer <B2B_API_KEY>` 또는 active admin session
+- mock 데이터 포함이 필요하면 `include_mock=true` 사용
 
 ### C. 데이터베이스 ERD
 
@@ -1551,10 +2561,10 @@ erDiagram
 A: 아니요. DPMM은 게임 내에서만 사용 가능한 포인트로, 현금화나 외부 전송이 불가능합니다.
 
 **Q: 한 마켓에 여러 번 베팅할 수 있나요?**
-A: 현재 MVP에서는 한 마켓당 하나의 포지션만 가능합니다. 향후 부분 청산 기능이 추가될 예정입니다.
+A: 현재 MVP에서는 한 마켓당 하나의 포지션만 가능합니다. active, hidden=false, 마감 전 마켓에서는 일부 stake 청산이나 전체 포지션 판매 등록이 가능합니다.
 
 **Q: 베팅 후 취소할 수 있나요?**
-A: 현재는 불가능합니다. Phase 2에서 부분 청산 기능이 추가될 예정입니다.
+A: 포지션 전체 취소나 옵션 변경은 불가능합니다. 단, active, hidden=false, 마감 전 마켓에서는 최소 100 DPMM을 남기는 조건으로 일부 stake를 청산하거나, 전체 포지션을 다른 회원에게 판매할 수 있습니다.
 
 **Q: 관리자는 어떻게 되나요?**
 A: 초기에는 운영팀이 직접 관리자 역할을 부여합니다. 향후 우수 사용자에게 큐레이터 권한을 부여할 계획입니다.

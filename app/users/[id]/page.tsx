@@ -1,8 +1,11 @@
 import { auth } from '@/auth'
 import Header from '@/components/Header'
 import { prisma } from '@/lib/db'
+import { getUnreadNotificationCount } from '@/lib/notifications'
+import { categoryLabel, getEquippedShopItems, profileThemeClass } from '@/lib/shop'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import FollowButton from './FollowButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -138,10 +141,15 @@ export default async function UserProfilePage({
     predictionVolume,
     payoutTotal,
     commentCount,
+    followerCount,
+    followingCount,
+    isFollowing,
+    unreadNotificationCount,
     recentPredictions,
     recentComments,
     totalUsers,
     higherRankedUsers,
+    equippedShopItems,
   ] = await Promise.all([
     prisma.prediction.count({
       where: {
@@ -190,6 +198,22 @@ export default async function UserProfilePage({
         market: { hidden: false },
       },
     }),
+    prisma.userFollow.count({
+      where: { followingId: profileUser.id },
+    }),
+    prisma.userFollow.count({
+      where: { followerId: profileUser.id },
+    }),
+    prisma.userFollow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: session.user.id,
+          followingId: profileUser.id,
+        },
+      },
+      select: { id: true },
+    }),
+    getUnreadNotificationCount(session.user.id),
     prisma.prediction.findMany({
       where: {
         userId: profileUser.id,
@@ -256,6 +280,7 @@ export default async function UserProfilePage({
         ],
       },
     }),
+    getEquippedShopItems(profileUser.id),
   ])
 
   const displayName = profileUser.name || '도파밈 유저'
@@ -266,15 +291,21 @@ export default async function UserProfilePage({
   const totalStaked = predictionVolume._sum.amount || 0
   const totalPayout = payoutTotal._sum.payout || 0
   const netPredictionResult = totalPayout - totalStaked
+  const isOwnProfile = profileUser.id === session.user.id
+  const equippedTheme = equippedShopItems.find((ownedItem) => ownedItem.item.category === 'profile_theme')
+  const equippedBadge = equippedShopItems.find((ownedItem) => ownedItem.item.category === 'badge')
+  const equippedEmote = equippedShopItems.find((ownedItem) => ownedItem.item.category === 'emote')
+
   return (
     <div className="min-h-screen bg-white">
       <Header
         isAuthenticated={true}
         userBalance={currentUser.dpmmBalance}
+        unreadNotificationCount={unreadNotificationCount}
       />
 
       <main className="container mx-auto px-4 py-20">
-        <section className="mb-12 rounded-dopameme-xl border-3 border-primary/20 bg-primary/5 p-8 shadow-token-sm">
+        <section className={`mb-12 rounded-dopameme-xl border-3 p-8 shadow-token-sm ${profileThemeClass(equippedTheme?.item.code)}`}>
           <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
               <div className="mb-5 flex flex-wrap items-center gap-3">
@@ -284,24 +315,78 @@ export default async function UserProfilePage({
                 <span className="rounded-dopameme-pill border border-light-border bg-white px-4 py-2 text-sm font-black text-text-tertiary">
                   가입 {formatDate(profileUser.createdAt)}
                 </span>
+                {equippedBadge && (
+                  <span className="rounded-dopameme-pill border border-secondary/30 bg-secondary/10 px-4 py-2 text-sm font-black text-secondary">
+                    {equippedBadge.item.previewText}
+                  </span>
+                )}
               </div>
 
-              <h1 className="text-5xl font-black text-text-primary">
-                {displayName}
-              </h1>
+              <div className="flex flex-wrap items-center gap-4">
+                <h1 className="text-5xl font-black text-text-primary">
+                  {displayName}
+                </h1>
+                {equippedEmote && (
+                  <span className="rounded-dopameme-pill border-3 border-success/30 bg-white px-5 py-2 text-lg font-black text-success">
+                    {equippedEmote.item.previewText}
+                  </span>
+                )}
+              </div>
               <p className="mt-4 max-w-2xl text-lg font-semibold text-text-secondary">
                 예측 참여, 랭킹, 공개 댓글 활동을 확인할 수 있는 사용자 프로필입니다.
               </p>
+              {equippedShopItems.length > 0 && (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {equippedShopItems.map((ownedItem) => (
+                    <span
+                      key={ownedItem.id}
+                      className="rounded-dopameme-pill border border-light-border bg-white px-3 py-1 text-xs font-black text-text-tertiary"
+                    >
+                      {categoryLabel(ownedItem.item.category)}: {ownedItem.item.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="rounded-dopameme-lg border-3 border-primary bg-white p-6 text-left shadow-token-brand lg:min-w-72">
-              <div className="text-sm font-black text-text-tertiary">현재 랭킹</div>
-              <div className="mt-3 text-4xl font-black text-primary">
-                {rank.toLocaleString()}위
+            <div className="space-y-4 lg:min-w-80">
+              <div className="rounded-dopameme-lg border-3 border-primary bg-white p-6 text-left shadow-token-brand">
+                <div className="text-sm font-black text-text-tertiary">현재 랭킹</div>
+                <div className="mt-3 text-4xl font-black text-primary">
+                  {rank.toLocaleString()}위
+                </div>
+                <div className="mt-2 text-sm font-bold text-text-secondary">
+                  전체 {totalUsers.toLocaleString()}명 중
+                </div>
               </div>
-              <div className="mt-2 text-sm font-bold text-text-secondary">
-                전체 {totalUsers.toLocaleString()}명 중
-              </div>
+
+              {!isOwnProfile && (
+                <FollowButton
+                  userId={profileUser.id}
+                  initialFollowing={Boolean(isFollowing)}
+                />
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-8 grid gap-4 md:grid-cols-2">
+          <div className="rounded-dopameme-lg border-3 border-light-border bg-white p-6 shadow-token-sm">
+            <div className="text-sm font-black text-text-tertiary">팔로워</div>
+            <div className="mt-3 text-3xl font-black text-primary">
+              {followerCount.toLocaleString()}
+            </div>
+            <div className="mt-2 text-sm font-bold text-text-secondary">
+              이 사용자를 팔로우하는 회원
+            </div>
+          </div>
+          <div className="rounded-dopameme-lg border-3 border-light-border bg-white p-6 shadow-token-sm">
+            <div className="text-sm font-black text-text-tertiary">팔로잉</div>
+            <div className="mt-3 text-3xl font-black text-secondary">
+              {followingCount.toLocaleString()}
+            </div>
+            <div className="mt-2 text-sm font-bold text-text-secondary">
+              이 사용자가 팔로우하는 회원
             </div>
           </div>
         </section>

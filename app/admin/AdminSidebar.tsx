@@ -12,6 +12,9 @@ type AdminSidebarProps = {
 const navItems = [
   { href: '/admin', label: '대시보드', description: '운영 현황' },
   { href: '/admin/markets', label: '마켓 관리', description: '목업 및 운영 마켓' },
+  { href: '/admin/stats/markets', label: '마켓 통계', description: '정확도 및 참여 분석' },
+  { href: '/admin/stats/trends', label: '트렌드 분석', description: '인기 카테고리, 급상승' },
+  { href: '/admin/stats/anomalies', label: '이상 탐지', description: '거래, 출금, 장부 신호' },
   { href: '/admin/markets/create', label: '마켓 생성', description: '신규 예측 등록' },
   { href: '/admin/users', label: '회원 관리', description: '권한, 상태, DPMM' },
   { href: '/admin/withdrawals', label: '출금 관리', description: 'DPMM 출금 승인' },

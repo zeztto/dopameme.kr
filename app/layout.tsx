@@ -1,4 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import OfflineStatusBanner from "@/components/OfflineStatusBanner";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import { getCurrentLocale } from "@/lib/i18n-server";
+import { HTML_LANGUAGES } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,6 +20,13 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "도파밈",
+    statusBarStyle: "default",
+  },
+  applicationName: "도파밈",
   metadataBase: new URL('https://dopameme.kr'),
   alternates: {
     canonical: '/',
@@ -53,22 +64,29 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  verification: {
-    google: 'google-site-verification-code',
-    // other: {
-    //   'naver-site-verification': 'naver-verification-code',
-    // },
-  },
 };
 
-export default function RootLayout({
+export const viewport: Viewport = {
+  themeColor: "#2563EB",
+  colorScheme: "light",
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getCurrentLocale();
+
   return (
-    <html lang="ko">
-      <body>{children}</body>
+    <html lang={HTML_LANGUAGES[locale]}>
+      <body>
+        {children}
+        <OfflineStatusBanner />
+        <ServiceWorkerRegistration />
+      </body>
     </html>
   );
 }

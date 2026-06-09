@@ -3,6 +3,21 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createMarket } from './actions'
+import {
+  DEFAULT_MARKET_REGION,
+  getDefaultLanguageForRegion,
+  getDefaultTimeZoneForRegion,
+  MARKET_CATEGORIES,
+  MARKET_LANGUAGE_OPTIONS,
+  MARKET_REGION_OPTIONS,
+  MARKET_TIME_ZONE_OPTIONS,
+  type MarketLanguageCode,
+  type MarketRegionCode,
+  type MarketTimeZone,
+} from '@/lib/markets/regions'
+const MIN_MARKET_OPTIONS = 2
+const MAX_MARKET_OPTIONS = 6
+const MAX_OPTION_TITLE_LENGTH = 40
 
 export default function CreateMarketForm() {
   const router = useRouter()
@@ -13,21 +28,37 @@ export default function CreateMarketForm() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('경제')
+  const [region, setRegion] = useState<MarketRegionCode>(DEFAULT_MARKET_REGION)
+  const [languageCode, setLanguageCode] = useState<MarketLanguageCode>(getDefaultLanguageForRegion(DEFAULT_MARKET_REGION))
+  const [timeZone, setTimeZone] = useState<MarketTimeZone>(getDefaultTimeZoneForRegion(DEFAULT_MARKET_REGION))
   const [imageUrl, setImageUrl] = useState('')
   const [endsAt, setEndsAt] = useState('')
-  const [options, setOptions] = useState(['', ''])
+  const [options, setOptions] = useState(['YES', 'NO'])
 
-  const categories = ['경제', '정치', '스포츠', '엔터테인먼트', '기술', '기타']
+  const updateRegion = (value: string) => {
+    const nextRegion = value as MarketRegionCode
+    setRegion(nextRegion)
+    setLanguageCode(getDefaultLanguageForRegion(nextRegion))
+    setTimeZone(getDefaultTimeZoneForRegion(nextRegion))
+  }
 
   const addOption = () => {
+    if (options.length >= MAX_MARKET_OPTIONS) {
+      setError(`선택지는 최대 ${MAX_MARKET_OPTIONS}개까지 만들 수 있습니다`)
+      return
+    }
+
+    setError('')
     setOptions([...options, ''])
   }
 
   const removeOption = (index: number) => {
-    if (options.length <= 2) {
-      setError('최소 2개 이상의 선택지가 필요합니다')
+    if (options.length <= MIN_MARKET_OPTIONS) {
+      setError(`최소 ${MIN_MARKET_OPTIONS}개 이상의 선택지가 필요합니다`)
       return
     }
+
+    setError('')
     setOptions(options.filter((_, i) => i !== index))
   }
 
@@ -42,11 +73,33 @@ export default function CreateMarketForm() {
     setLoading(true)
     setError('')
 
-    // 빈 옵션 제거
-    const filteredOptions = options.filter((opt) => opt.trim().length > 0)
+    const filteredOptions = options
+      .map((opt) => opt.trim())
+      .filter((opt) => opt.length > 0)
 
-    if (filteredOptions.length < 2) {
-      setError('최소 2개 이상의 선택지를 입력해주세요')
+    if (filteredOptions.length < MIN_MARKET_OPTIONS) {
+      setError(`최소 ${MIN_MARKET_OPTIONS}개 이상의 선택지를 입력해주세요`)
+      setLoading(false)
+      return
+    }
+
+    if (filteredOptions.length > MAX_MARKET_OPTIONS) {
+      setError(`선택지는 최대 ${MAX_MARKET_OPTIONS}개까지 만들 수 있습니다`)
+      setLoading(false)
+      return
+    }
+
+    if (filteredOptions.some((opt) => opt.length > MAX_OPTION_TITLE_LENGTH)) {
+      setError(`선택지는 ${MAX_OPTION_TITLE_LENGTH}자 이하로 입력해주세요`)
+      setLoading(false)
+      return
+    }
+
+    const optionLocale = languageCode === 'ja' ? 'ja-JP' : languageCode === 'en' ? 'en-US' : 'ko-KR'
+    const uniqueOptions = new Set(filteredOptions.map((opt) => opt.toLocaleLowerCase(optionLocale)))
+
+    if (uniqueOptions.size !== filteredOptions.length) {
+      setError('선택지 이름은 중복될 수 없습니다')
       setLoading(false)
       return
     }
@@ -55,6 +108,9 @@ export default function CreateMarketForm() {
       title,
       description,
       category,
+      region,
+      languageCode,
+      timeZone,
       imageUrl: imageUrl || undefined,
       endsAt,
       options: filteredOptions,
@@ -139,12 +195,77 @@ export default function CreateMarketForm() {
             required
             className="w-full rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
           >
-            {categories.map((cat) => (
+            {MARKET_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div>
+            <label htmlFor="region" className="block text-text-primary font-bold mb-2">
+              대상 지역 *
+            </label>
+            <select
+              id="region"
+              value={region}
+              onChange={(e) => updateRegion(e.target.value)}
+              required
+              className="w-full rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
+            >
+              {MARKET_REGION_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.flag} {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs font-semibold text-text-tertiary">
+              한국 외 지역은 공개 목록에서 해외 이슈로 표시됩니다.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="languageCode" className="block text-text-primary font-bold mb-2">
+              콘텐츠 언어 *
+            </label>
+            <select
+              id="languageCode"
+              value={languageCode}
+              onChange={(e) => setLanguageCode(e.target.value as MarketLanguageCode)}
+              required
+              className="w-full rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
+            >
+              {MARKET_LANGUAGE_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="timeZone" className="block text-text-primary font-bold mb-2">
+              마감 타임존 *
+            </label>
+            <select
+              id="timeZone"
+              value={timeZone}
+              onChange={(e) => setTimeZone(e.target.value as MarketTimeZone)}
+              required
+              className="w-full rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
+            >
+              {MARKET_TIME_ZONE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label} ({option.abbreviation})
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs font-semibold text-text-tertiary">
+              마감 날짜/시간 입력값은 이 타임존의 현지 시각으로 저장됩니다.
+            </p>
+          </div>
         </div>
 
         {/* Image URL (optional) */}
@@ -165,7 +286,7 @@ export default function CreateMarketForm() {
         {/* Ends At */}
         <div>
           <label htmlFor="endsAt" className="block text-text-primary font-bold mb-2">
-            마감 날짜/시간 *
+            마감 날짜/시간 * ({timeZone})
           </label>
           <input
             id="endsAt"
@@ -179,7 +300,12 @@ export default function CreateMarketForm() {
 
         {/* Options */}
         <div>
-          <label className="block text-text-primary font-bold mb-2">선택지 *</label>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <label className="block text-text-primary font-bold">선택지 *</label>
+            <span className="text-xs font-bold text-text-tertiary">
+              {options.length}/{MAX_MARKET_OPTIONS}
+            </span>
+          </div>
           <div className="space-y-3">
             {options.map((option, index) => (
               <div key={index} className="flex gap-2">
@@ -188,9 +314,10 @@ export default function CreateMarketForm() {
                   value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
                   placeholder={`선택지 ${index + 1}`}
+                  maxLength={MAX_OPTION_TITLE_LENGTH}
                   className="flex-1 rounded-dopameme-md border-2 border-light-border px-4 py-3 font-medium text-text-primary outline-none transition focus:border-primary"
                 />
-                {options.length > 2 && (
+                {options.length > MIN_MARKET_OPTIONS && (
                   <button
                     type="button"
                     onClick={() => removeOption(index)}
@@ -205,10 +332,14 @@ export default function CreateMarketForm() {
           <button
             type="button"
             onClick={addOption}
-            className="mt-3 rounded-dopameme-pill bg-primary/10 px-6 py-3 font-bold text-primary transition hover:bg-primary hover:text-white"
+            disabled={options.length >= MAX_MARKET_OPTIONS}
+            className="mt-3 rounded-dopameme-pill bg-primary/10 px-6 py-3 font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             + 선택지 추가
           </button>
+          <p className="mt-2 text-xs font-semibold text-text-tertiary">
+            최소 {MIN_MARKET_OPTIONS}개, 최대 {MAX_MARKET_OPTIONS}개까지 만들 수 있습니다.
+          </p>
         </div>
 
         {/* Submit Button */}

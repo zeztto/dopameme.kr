@@ -1,23 +1,125 @@
 import { auth } from "@/auth"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { prisma } from "@/lib/db"
+import { computeAmmOptionProbabilities } from "@/lib/markets/amm"
 import { notFound } from "next/navigation"
+import MarketLiveRefresh from "./MarketLiveRefresh"
 import PredictionForm from "./PredictionForm"
+import MarketPriceChart from "./MarketPriceChart"
+import PositionLiquidationForm from "./PositionLiquidationForm"
+import PositionListingBuyButton from "./PositionListingBuyButton"
+import PositionTransferForm from "./PositionTransferForm"
 import AdminResolveMarket from "./AdminResolveMarket"
 import ToggleHiddenButton from "./ToggleHiddenButton"
 import MarketComments from "./MarketComments"
 import { isAdmin } from "@/lib/auth-utils"
 import Header from "@/components/Header"
+import { getUnreadNotificationCount } from "@/lib/notifications"
+import { DATE_LOCALES, marketsCopy } from "@/lib/i18n"
+import { getCurrentLocale } from "@/lib/i18n-server"
+import {
+  formatMarketLongDateTime,
+  getMarketCategoryLabel,
+  getMarketRegionLabel,
+  getMarketRegionOption,
+  getMarketTimeZoneOption,
+  isOverseasMarket,
+} from "@/lib/markets/regions"
+import {
+  absoluteUrl,
+  buildJsonLdScript,
+  createSeoDescription,
+  DEFAULT_OG_IMAGE,
+  SITE_NAME,
+} from "@/lib/seo"
 
-export default async function MarketDetailPage({ params }: { params: Promise<{ id: string }> }) {
+type MarketPageParams = {
+  params: Promise<{ id: string }>
+}
+
+export async function generateMetadata({ params }: MarketPageParams): Promise<Metadata> {
+  const { id } = await params
+  const market = await prisma.market.findFirst({
+    where: {
+      id,
+      hidden: false,
+      status: { in: ["active", "resolved"] },
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      imageUrl: true,
+      createdAt: true,
+    },
+  })
+
+  if (!market) {
+    return {
+      title: "마켓을 찾을 수 없습니다",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    }
+  }
+
+  const description = createSeoDescription(market.description)
+  const canonicalPath = `/markets/${market.id}`
+  const imageUrl = market.imageUrl || DEFAULT_OG_IMAGE
+
+  return {
+    title: market.title,
+    description,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      type: "article",
+      url: canonicalPath,
+      siteName: SITE_NAME,
+      title: market.title,
+      description,
+      publishedTime: market.createdAt.toISOString(),
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: market.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: market.title,
+      description,
+      images: [imageUrl],
+    },
+  }
+}
+
+export default async function MarketDetailPage({ params }: MarketPageParams) {
   const { id } = await params
   const session = await auth()
   const admin = await isAdmin()
+  const locale = await getCurrentLocale()
+  const copy = marketsCopy[locale]
+  const dateLocale = DATE_LOCALES[locale]
 
   // 마켓 정보 조회
   const market = await prisma.market.findUnique({
     where: { id },
-    include: { options: true },
+    include: {
+      options: true,
+      ammConfig: {
+        select: {
+          enabled: true,
+          virtualLiquidity: true,
+        },
+      },
+    },
   })
 
   if (!market || (market.hidden && !admin)) {
@@ -26,13 +128,16 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
 
   // 마켓 옵션 조회
   const options = market.options
+  const quoteOptions = options.map((option) => ({
+    id: option.id,
+    totalAmount: option.totalAmount,
+  }))
 
   const totalAmount = options.reduce((sum, opt) => sum + opt.totalAmount, 0)
   const totalPredictions = options.reduce((sum, opt) => sum + opt.totalPredictions, 0)
 
-  const optionsWithPercentage = options.map(opt => ({
+  const optionsWithPercentage = computeAmmOptionProbabilities(options, market.ammConfig).map(opt => ({
     ...opt,
-    percentage: totalAmount > 0 ? Math.round((opt.totalAmount / totalAmount) * 100) : Math.round(100 / options.length),
     isWinner: market.status === 'resolved' && market.winningOptionId === opt.id,
   }))
 
@@ -41,21 +146,32 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
   let userPredictions: {
     id: string
     amount: number
+    liquidatedAmount: number
     optionId: string
     createdAt: Date
     optionTitle: string
+    activeListing: {
+      id: string
+      amount: number
+      price: number
+    } | null
   }[] = []
   let activeUser = false
+  let unreadNotificationCount = 0
 
   if (session?.user?.id) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { dpmmBalance: true, status: true },
-    })
+    const [user, notificationCount] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { dpmmBalance: true, status: true },
+      }),
+      getUnreadNotificationCount(session.user.id),
+    ])
 
     if (user?.status === 'active') {
       activeUser = true
       userBalance = user.dpmmBalance
+      unreadNotificationCount = notificationCount
     }
 
     // 사용자가 이 마켓에 참여한 예측 조회
@@ -68,10 +184,20 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
         select: {
           id: true,
           amount: true,
+          liquidatedAmount: true,
           optionId: true,
           createdAt: true,
           option: {
             select: { title: true },
+          },
+          listings: {
+            where: { status: 'active' },
+            select: {
+              id: true,
+              amount: true,
+              price: true,
+            },
+            take: 1,
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -80,15 +206,75 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
       userPredictions = userPredictionRows.map((prediction) => ({
         id: prediction.id,
         amount: prediction.amount,
+        liquidatedAmount: prediction.liquidatedAmount,
         optionId: prediction.optionId,
         createdAt: prediction.createdAt,
         optionTitle: prediction.option.title,
+        activeListing: prediction.listings[0] || null,
       }))
     }
   }
 
   const hasParticipated = userPredictions.length > 0
   const totalUserBet = userPredictions.reduce((sum, p) => sum + p.amount, 0)
+  const priceSnapshotRows = await prisma.marketPriceSnapshot.findMany({
+    where: { marketId: id },
+    take: 180,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      optionId: true,
+      probabilityBps: true,
+      createdAt: true,
+    },
+  })
+  const sortedPriceSnapshots = [...priceSnapshotRows].reverse()
+  const priceChartSeries = options.map((option) => {
+    const currentBps = optionsWithPercentage.find((item) => item.id === option.id)?.probabilityBps
+      ?? Math.round(10000 / options.length)
+    const points = sortedPriceSnapshots
+      .filter((snapshot) => snapshot.optionId === option.id)
+      .map((snapshot) => ({
+        createdAt: snapshot.createdAt.toISOString(),
+        probabilityBps: snapshot.probabilityBps,
+      }))
+
+    return {
+      optionId: option.id,
+      title: option.title,
+      currentBps,
+      points: points.length > 0
+        ? points
+        : [{
+          createdAt: new Date().toISOString(),
+          probabilityBps: currentBps,
+        }],
+    }
+  })
+  const positionListings = await prisma.positionListing.findMany({
+    where: {
+      marketId: id,
+      status: 'active',
+    },
+    take: 20,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      sellerId: true,
+      amount: true,
+      price: true,
+      createdAt: true,
+      seller: {
+        select: {
+          name: true,
+        },
+      },
+      option: {
+        select: {
+          title: true,
+        },
+      },
+    },
+  })
   const commentWhere = {
     marketId: id,
     status: 'visible',
@@ -129,13 +315,61 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
   // 마감 여부 확인
   const isEnded = new Date() > new Date(market.endsAt)
   const canBet = activeUser && market.status === 'active' && !isEnded && !market.hidden
+  const canLiquidate = canBet
+  const canTransfer = canBet
+  const currentUserId = activeUser && session?.user?.id ? session.user.id : null
+  const liveRefreshEnabled = market.status === 'active' && !isEnded && !market.hidden
+  const region = getMarketRegionOption(market.region)
+  const timeZone = getMarketTimeZoneOption(market.timeZone)
+  const winningOption = optionsWithPercentage.find((option) => option.isWinner)
+  const marketStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: market.title,
+    description: createSeoDescription(market.description),
+    url: absoluteUrl(`/markets/${market.id}`),
+    datePublished: market.createdAt.toISOString(),
+    dateModified: (market.resolvedAt || market.createdAt).toISOString(),
+    isPartOf: {
+      "@type": "WebSite",
+      name: SITE_NAME,
+      url: absoluteUrl("/"),
+    },
+    mainEntity: {
+      "@type": "Question",
+      name: market.title,
+      text: market.description,
+      answerCount: optionsWithPercentage.length,
+      ...(winningOption
+        ? {
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: winningOption.title,
+            upvoteCount: winningOption.totalPredictions,
+          },
+        }
+        : {
+          suggestedAnswer: optionsWithPercentage.map((option) => ({
+            "@type": "Answer",
+            text: option.title,
+            upvoteCount: option.totalPredictions,
+          })),
+        }),
+    },
+  }
 
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: buildJsonLdScript(marketStructuredData) }}
+      />
+      <MarketLiveRefresh enabled={liveRefreshEnabled} />
       <Header
         showBackToMarkets={true}
         isAuthenticated={activeUser}
         userBalance={activeUser ? userBalance : undefined}
+        unreadNotificationCount={unreadNotificationCount}
       />
 
       <main className="container mx-auto px-4 py-12">
@@ -144,21 +378,36 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-4 flex-wrap">
               <span className="inline-block bg-secondary/10 text-secondary px-4 py-1.5 rounded-full text-sm font-black">
-                {market.category}
+                {getMarketCategoryLabel(market.category, locale)}
+              </span>
+              <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-black ${
+                isOverseasMarket(market.region)
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-gray-100 text-text-tertiary'
+              }`}>
+                {region.flag} {getMarketRegionLabel(market.region, locale)}
+              </span>
+              {isOverseasMarket(market.region) && (
+                <span className="inline-block bg-accent-cyan/10 px-4 py-1.5 text-sm font-black text-accent-cyan rounded-full">
+                  {copy.overseasBadge}
+                </span>
+              )}
+              <span className="inline-block rounded-full bg-success/10 px-4 py-1.5 text-sm font-black text-success">
+                {timeZone.label} {timeZone.abbreviation}
               </span>
               {isEnded && (
                 <span className="inline-block bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm font-black">
-                  마감됨
+                  {copy.endedBadge}
                 </span>
               )}
               {market.status === 'resolved' && (
                 <span className="inline-block bg-success/10 text-success px-4 py-1.5 rounded-full text-sm font-black">
-                  결과 확정
+                  {copy.resolvedBadge}
                 </span>
               )}
               {admin && market.hidden && (
                 <span className="inline-block bg-warning/10 text-warning px-4 py-1.5 rounded-full text-sm font-black">
-                  🔒 가려짐
+                  🔒 {copy.hiddenBadge}
                 </span>
               )}
               {admin && (
@@ -180,27 +429,21 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
 
             <div className="flex gap-8 text-sm">
               <div>
-                <span className="text-text-tertiary font-semibold">총 참여자</span>
+                <span className="text-text-tertiary font-semibold">{copy.participantsLabel}</span>
                 <div className="text-primary font-black text-2xl mt-1">
-                  {totalPredictions.toLocaleString()}명
+                  {totalPredictions.toLocaleString(dateLocale)}{copy.participantUnit}
                 </div>
               </div>
               <div>
-                <span className="text-text-tertiary font-semibold">총 베팅액</span>
+                <span className="text-text-tertiary font-semibold">{copy.totalAmountLabel}</span>
                 <div className="text-primary font-black text-2xl mt-1">
-                  {totalAmount.toLocaleString()} DPMM
+                  {totalAmount.toLocaleString(dateLocale)} DPMM
                 </div>
               </div>
               <div>
-                <span className="text-text-tertiary font-semibold">마감</span>
+                <span className="text-text-tertiary font-semibold">{copy.closesAtLabel}</span>
                 <div className="text-secondary font-black text-xl mt-1">
-                  {new Date(market.endsAt).toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {formatMarketLongDateTime(market.endsAt, market.timeZone, dateLocale)}
                 </div>
               </div>
             </div>
@@ -214,13 +457,35 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
               </h3>
               <div className="space-y-3">
                 {userPredictions.map((pred) => (
-                  <div key={pred.id} className="flex justify-between items-center">
-                    <span className="text-text-secondary font-semibold">
-                      {pred.optionTitle}
-                    </span>
-                    <span className="text-primary font-black">
-                      {pred.amount.toLocaleString()} DPMM
-                    </span>
+                  <div key={pred.id} className="space-y-3 rounded-dopameme-lg border-2 border-primary/10 bg-white p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <span className="text-text-secondary font-semibold">
+                          {pred.optionTitle}
+                        </span>
+                        {pred.liquidatedAmount > 0 && (
+                          <div className="mt-1 text-xs font-bold text-text-tertiary">
+                            누적 청산 {pred.liquidatedAmount.toLocaleString()} DPMM
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-primary font-black">
+                        {pred.amount.toLocaleString()} DPMM
+                      </span>
+                    </div>
+                    {canLiquidate && !pred.activeListing && (
+                      <PositionLiquidationForm
+                        predictionId={pred.id}
+                        currentAmount={pred.amount}
+                      />
+                    )}
+                    {(canTransfer || pred.activeListing) && (
+                      <PositionTransferForm
+                        predictionId={pred.id}
+                        currentAmount={pred.amount}
+                        activeListing={pred.activeListing}
+                      />
+                    )}
                   </div>
                 ))}
                 <div className="pt-3 border-t-2 border-primary/20 flex justify-between items-center">
@@ -232,6 +497,80 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
               </div>
             </div>
           )}
+
+          {/* Secondary Market Listings */}
+          {positionListings.length > 0 && (
+            <div className="mb-8 overflow-hidden rounded-dopameme-xl border-3 border-light-border bg-white shadow-token-md">
+              <div className="border-b-3 border-light-border bg-light-bg-alt px-5 py-4">
+                <h3 className="text-xl font-black text-text-primary">2차 거래</h3>
+                <p className="mt-1 text-sm font-semibold text-text-tertiary">
+                  다른 회원이 판매 등록한 전체 포지션
+                </p>
+              </div>
+              <div className="divide-y-2 divide-light-border">
+                {positionListings.map((listing) => {
+                  const disabledReason = !activeUser
+                    ? '로그인 필요'
+                    : !canBet
+                    ? '현재 거래 불가'
+                    : listing.sellerId === currentUserId
+                    ? '내 판매 등록'
+                    : hasParticipated
+                    ? '이미 참여한 마켓'
+                    : undefined
+
+                  return (
+                    <div
+                      key={listing.id}
+                      className="grid gap-4 px-5 py-5 md:grid-cols-[1fr_auto] md:items-center"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-dopameme-pill bg-success px-3 py-1 text-xs font-black text-white">
+                            판매중
+                          </span>
+                          <span className="text-xs font-bold text-text-tertiary">
+                            {new Intl.DateTimeFormat('ko-KR', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            }).format(listing.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="font-black text-text-primary">
+                            {listing.option.title}
+                          </span>
+                          <span className="text-sm font-semibold text-text-secondary">
+                            {listing.amount.toLocaleString()} DPMM 포지션
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm font-semibold text-text-tertiary">
+                          판매자: {listing.seller.name || '도파밈 유저'}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-3 md:items-end">
+                        <div className="text-left md:text-right">
+                          <div className="text-xs font-bold text-text-tertiary">판매가</div>
+                          <div className="mt-1 text-xl font-black text-primary">
+                            {listing.price.toLocaleString()} DPMM
+                          </div>
+                        </div>
+                        <PositionListingBuyButton
+                          listingId={listing.id}
+                          disabledReason={disabledReason}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <MarketPriceChart series={priceChartSeries} />
 
           {/* Options Layout */}
           {optionsWithPercentage.length === 2 ? (
@@ -344,12 +683,16 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
                       optionId={optionsWithPercentage[0].id}
                       optionTitle={optionsWithPercentage[0].title}
                       userBalance={userBalance}
+                      quoteOptions={quoteOptions}
+                      ammConfig={market.ammConfig}
                     />
                     <PredictionForm
                       marketId={market.id}
                       optionId={optionsWithPercentage[1].id}
                       optionTitle={optionsWithPercentage[1].title}
                       userBalance={userBalance}
+                      quoteOptions={quoteOptions}
+                      ammConfig={market.ammConfig}
                     />
                   </div>
                 ) : null}
@@ -429,6 +772,8 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
                       optionId={option.id}
                       optionTitle={option.title}
                       userBalance={userBalance}
+                      quoteOptions={quoteOptions}
+                      ammConfig={market.ammConfig}
                     />
                   ) : hasParticipated && session?.user ? (
                     <div className="bg-gray-100 rounded-2xl p-4 text-center border-2 border-gray-300">

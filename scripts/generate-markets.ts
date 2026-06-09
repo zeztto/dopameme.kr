@@ -7,9 +7,25 @@ if (!process.env.DATABASE_URL) {
 }
 
 import { prisma } from '@/lib/db'
+import {
+  DEFAULT_MARKET_REGION,
+  getDefaultLanguageForRegion,
+  getDefaultTimeZoneForRegion,
+} from '@/lib/markets/regions'
+
+type MarketSeed = {
+  category: string
+  title: string
+  description: string
+  options: string[]
+  daysUntilEnd: number
+  region?: string
+  languageCode?: string
+  timeZone?: string
+}
 
 // 예측 시장 데이터
-export const marketData = [
+export const marketData: MarketSeed[] = [
   // 정치 (10개)
   {
     category: '정치',
@@ -369,6 +385,60 @@ export const marketData = [
     options: ['예', '아니오'],
     daysUntilEnd: 290,
   },
+  {
+    category: '국제',
+    region: 'US',
+    languageCode: 'en',
+    title: 'Will the U.S. Fed cut rates at least twice this year?',
+    description: 'A market for forecasting whether the Federal Reserve will announce two or more benchmark rate cuts before year-end.',
+    options: ['Yes', 'No'],
+    daysUntilEnd: 210,
+  },
+  {
+    category: '국제',
+    region: 'US',
+    languageCode: 'en',
+    title: 'Will a major U.S. AI regulation bill pass this year?',
+    description: 'Predict whether a federal AI regulation package will pass both chambers of Congress before year-end.',
+    options: ['Passes', 'Does not pass'],
+    daysUntilEnd: 260,
+  },
+  {
+    category: '국제',
+    region: 'JP',
+    languageCode: 'ja',
+    title: '日本銀行は年内に追加利上げを行うか？',
+    description: '日本銀行が年内に追加利上げを発表するかを予測するマーケットです。',
+    options: ['行う', '行わない'],
+    daysUntilEnd: 230,
+  },
+  {
+    category: '국제',
+    region: 'JP',
+    languageCode: 'ja',
+    title: '日本の次期総選挙で与党が過半数を維持するか？',
+    description: '次期衆議院選挙で与党が単独または連立で過半数を維持できるかを予測します。',
+    options: ['維持する', '維持しない'],
+    daysUntilEnd: 320,
+  },
+  {
+    category: '국제',
+    region: 'EU',
+    languageCode: 'en',
+    title: 'Will the EU approve a new digital market fine over €1B?',
+    description: 'Forecast whether EU regulators will announce a digital market enforcement fine exceeding €1B this year.',
+    options: ['Yes', 'No'],
+    daysUntilEnd: 275,
+  },
+  {
+    category: '국제',
+    region: 'GLOBAL',
+    languageCode: 'en',
+    title: 'Will a global top-10 crypto asset double from its January open?',
+    description: 'Predict whether any cryptocurrency ranked in the global top 10 by market cap doubles from its January opening price this year.',
+    options: ['Yes', 'No'],
+    daysUntilEnd: 300,
+  },
 ]
 
 export async function seedMockMarkets(adminId: string) {
@@ -389,6 +459,19 @@ export async function seedMockMarkets(adminId: string) {
     })
 
     if (existingMarket) {
+      const region = data.region || DEFAULT_MARKET_REGION
+
+      await prisma.market.update({
+        where: { id: existingMarket.id },
+        data: {
+          description: data.description,
+          category: data.category,
+          region,
+          languageCode: data.languageCode || getDefaultLanguageForRegion(region),
+          timeZone: data.timeZone || getDefaultTimeZoneForRegion(region),
+        },
+      })
+
       const existingOptionTitles = new Set(
         existingMarket.options.map((option) => option.title)
       )
@@ -416,6 +499,9 @@ export async function seedMockMarkets(adminId: string) {
         title: data.title,
         description: data.description,
         category: data.category,
+        region: data.region || DEFAULT_MARKET_REGION,
+        languageCode: data.languageCode || getDefaultLanguageForRegion(data.region),
+        timeZone: data.timeZone || getDefaultTimeZoneForRegion(data.region),
         status: 'active',
         source: 'mock',
         hidden: false,

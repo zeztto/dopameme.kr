@@ -28,3 +28,44 @@
 - Expanded smoke coverage to verify a discovered market detail page.
 - Added login-protected user profile pages with ranking, prediction stats, recent predictions, and recent comments.
 - Expanded smoke coverage to verify user profile auth boundaries.
+- Added user follow/unfollow relationships with follower and following counts on profile pages.
+- Added a login-protected activity feed for followed users' public predictions and comments.
+- Added an in-app notification center for new followers and comments on owned markets.
+- Hardened multi-option market creation with 2-6 options, duplicate prevention, and DB uniqueness.
+- Added partial prediction liquidation with 1% fee, remaining stake safeguards, and DPMM ledger entries.
+- Added fixed-price secondary market position transfers with ownership changes and DPMM ledger entries.
+- Added transaction-driven market price snapshots and live-refreshing market detail charts.
+- Added a virtual-liquidity AMM quote layer for market probabilities and prediction price impact.
+- Added a login-protected user statistics dashboard with win rate, ROI, prediction distribution, and category analysis.
+- Added an admin market statistics dashboard for prediction accuracy, crowd accuracy, participant concentration, and operational monitoring.
+- Added an admin trend analytics dashboard comparing recent and previous 7-day activity for hot categories and surging markets.
+- Added a protected B2B aggregate analytics API with API-key/admin auth and PII-free market/category/trend payloads.
+- Added a PWA mobile app foundation with web app manifest, service worker registration, and offline fallback.
+- Added Web Push subscription management and delivery for in-app notifications.
+- Expanded PWA offline mode with safe public-page caching and an offline status banner.
+- Added WebAuthn/passkey registration and passkey login as the biometric auth foundation.
+- Added an Expo React Native shell for the production dopameme.kr mobile app.
+- Added user achievement definitions, progress tracking, and a login-protected achievements dashboard.
+- Added XP-based user levels with claimable DPMM level-up rewards.
+- Added monthly and quarterly season championship leaderboards with score snapshots.
+- Added a DPMM item shop with profile themes, badges, emotes, inventory, equip state, and purchase ledger entries.
+- Added a local AI-style prediction recommendation dashboard with explainable market scores, suggested options, and risk labels.
+- Added a local trend prediction dashboard with category forecasts, topic ideas, and rising market signals.
+- Added an admin-only anomaly detection dashboard for prediction velocity, market concentration, ledger movement, withdrawals, and position transfers.
+- Added cookie-based Korean, English, and Japanese locale switching for the global header and landing page.
+- Added overseas issue market metadata, admin region/language controls, public region filters, and international mock seed markets.
+- Added market-level timezone metadata, timezone-aware admin close-time parsing, and local close-time display across market surfaces.
+- Added localized public market browsing copy, category/region labels, locale-aware sorting, and smoke coverage for English/Japanese market pages.
+- Added localized login and signup entry pages with server-rendered locale copy and smoke coverage.
+- Added robots.txt, sitemap.xml, auth-entry noindex metadata, and smoke coverage for public crawl contracts.
+- Added canonical/OpenGraph/Twitter metadata and JSON-LD coverage for public landing, market list, and market detail pages.
+- Added global security headers and cache-control contracts for service worker/static assets with smoke coverage.
+- Added private no-store cache-control headers for authenticated, API, and user-specific routes with smoke coverage.
+- Added private X-Robots-Tag noindex headers for auth, API, admin, app, feed, notification, leaderboard, and user routes.
+- Added `/.well-known/security.txt` with security contact metadata and smoke coverage.
+- Synced root `<html lang>` with the selected locale cookie and added smoke coverage.
+- Added localized title, description, OpenGraph, and Twitter metadata for public/auth entry pages.
+- Added private no-store cache-control for the cookie-localized landing page.
+- Expanded private no-store cache-control to public HTML routes affected by locale cookies.
+- Removed cookie-localized navigation HTML from Service Worker precache/runtime cache.
+- Added public revalidation cache-control for manifest and icon PWA assets.

@@ -62,10 +62,17 @@ function ledgerTypeLabel(type: string) {
   if (type === 'welcome_bonus') return '웰컴 보너스'
   if (type === 'admin_adjustment') return '관리자 조정'
   if (type === 'prediction_stake') return '예측 참여'
+  if (type === 'prediction_liquidation') return '부분 청산'
+  if (type === 'prediction_liquidation_fee') return '청산 수수료'
+  if (type === 'position_purchase') return '포지션 구매'
+  if (type === 'position_sale') return '포지션 판매'
+  if (type === 'position_sale_fee') return '양도 수수료'
   if (type === 'market_payout') return '정산 보상'
   if (type === 'market_fee') return '정산 수수료'
   if (type === 'withdrawal_request') return '출금 요청'
   if (type === 'withdrawal_refund') return '출금 복원'
+  if (type === 'level_reward') return '레벨 보상'
+  if (type === 'item_purchase') return '아이템 구매'
   return type
 }
 
@@ -280,12 +287,26 @@ export default async function AdminDashboardPage() {
             마켓, 목업 데이터, 예측 참여 상태를 한 화면에서 확인합니다.
           </p>
         </div>
-        <Link
-          href="/admin/markets/create"
-          className="inline-flex items-center justify-center rounded-dopameme-pill bg-primary px-6 py-3 text-sm font-black text-white shadow-token-brand transition hover:bg-primary-dark"
-        >
-          새 마켓 생성
-        </Link>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/admin/stats/trends"
+            className="inline-flex items-center justify-center rounded-dopameme-pill border-3 border-secondary bg-white px-6 py-3 text-sm font-black text-secondary transition hover:bg-secondary hover:text-white"
+          >
+            트렌드 분석
+          </Link>
+          <Link
+            href="/admin/stats/markets"
+            className="inline-flex items-center justify-center rounded-dopameme-pill border-3 border-primary bg-white px-6 py-3 text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+          >
+            마켓 통계
+          </Link>
+          <Link
+            href="/admin/markets/create"
+            className="inline-flex items-center justify-center rounded-dopameme-pill bg-primary px-6 py-3 text-sm font-black text-white shadow-token-brand transition hover:bg-primary-dark"
+          >
+            새 마켓 생성
+          </Link>
+        </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

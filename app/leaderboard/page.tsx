@@ -1,6 +1,7 @@
 import { auth } from '@/auth'
 import Header from '@/components/Header'
 import { prisma } from '@/lib/db'
+import { getUnreadNotificationCount } from '@/lib/notifications'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
@@ -130,7 +131,13 @@ export default async function LeaderboardPage() {
     role: { not: 'system' },
   }
 
-  const [topUsers, totalUsers, totalBalance, higherRankedUsers] = await Promise.all([
+  const [
+    topUsers,
+    totalUsers,
+    totalBalance,
+    higherRankedUsers,
+    unreadNotificationCount,
+  ] = await Promise.all([
     prisma.user.findMany({
       where: leaderboardWhere,
       take: 100,
@@ -169,6 +176,7 @@ export default async function LeaderboardPage() {
         ],
       },
     }),
+    getUnreadNotificationCount(currentUser.id),
   ])
 
   const myRank = higherRankedUsers + 1
@@ -179,7 +187,10 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header userBalance={currentUser.dpmmBalance} />
+      <Header
+        userBalance={currentUser.dpmmBalance}
+        unreadNotificationCount={unreadNotificationCount}
+      />
 
       <main className="container mx-auto px-4 py-20">
         <section className="mb-12 text-center">
